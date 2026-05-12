@@ -72,6 +72,77 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   $scope.smtpmech = "NONE"
   $scope.selectedOutgoingSMTP = ""
   $scope.saveSMTPServer = false;
+  $scope.selectedFolder = "";
+  $scope.folders = [];
+
+  $scope.getFolderFromMessage = function(message) {
+    if(!message || !message.Content || !message.Content.Headers) {
+      return "";
+    }
+
+    for(var key in message.Content.Headers) {
+      if(key && key.toLowerCase() === "x-mailhogplus-folder") {
+        var values = message.Content.Headers[key];
+        if(values && values.length > 0 && values[0]) {
+          return values[0].trim();
+        }
+      }
+    }
+    return "";
+  }
+
+  $scope.messageMatchesSelectedFolder = function(message) {
+    var folder = $scope.getFolderFromMessage(message);
+    if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
+      return folder === $scope.selectedFolder;
+    }
+    return folder.length === 0;
+  }
+
+  $scope.sortFolders = function() {
+    $scope.folders.sort(function(a, b) {
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  $scope.bumpFolderCount = function(folderName) {
+    if(!folderName || folderName.length === 0) {
+      return;
+    }
+    for(var i = 0; i < $scope.folders.length; i++) {
+      if($scope.folders[i].name === folderName) {
+        $scope.folders[i].count++;
+        return;
+      }
+    }
+    $scope.folders.push({ name: folderName, count: 1 });
+    $scope.sortFolders();
+  }
+
+  $scope.refreshFolders = function() {
+    $http.get($scope.host + 'api/v2/folders').success(function(data) {
+      $scope.folders = data.items || [];
+      $scope.sortFolders();
+    });
+  }
+
+  $scope.selectInbox = function() {
+    $scope.preview = null;
+    $scope.selectedFolder = "";
+    $scope.startIndex = 0;
+    $scope.startMessages = 0;
+    $scope.searching = false;
+    $scope.refresh();
+  }
+
+  $scope.selectFolder = function(folderName) {
+    $scope.preview = null;
+    $scope.selectedFolder = folderName || "";
+    $scope.startIndex = 0;
+    $scope.startMessages = 0;
+    $scope.searching = false;
+    $scope.refresh();
+  }
 
   $scope.getJim = function() {
     var url = $scope.host + 'api/v2/jim'
@@ -82,6 +153,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     })
   }
   $scope.getJim()
+  $scope.refreshFolders()
 
   $scope.enableJim = function() {
     var url = $scope.host + 'api/v2/jim'
@@ -107,16 +179,45 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     return moment(a)
   }
 
+  $scope.connectionSettings = {};
+
+  $scope.buildConnectionSettings = function() {
+    var uiOrigin = location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '');
+    var apiBase = $scope.host && $scope.host.length > 0 ? $scope.host : (uiOrigin + location.pathname);
+    if(apiBase.charAt(apiBase.length - 1) !== '/') {
+      apiBase += '/';
+    }
+
+    var parser = document.createElement('a');
+    parser.href = apiBase;
+    var apiHost = parser.hostname || location.hostname;
+    var apiPort = parser.port || (parser.protocol === 'https:' ? '443' : '80');
+    var wsProtocol = parser.protocol === 'https:' ? 'wss://' : 'ws://';
+    var wsPort = parser.port ? ':' + parser.port : '';
+
+    $scope.connectionSettings = {
+      uiOrigin: uiOrigin,
+      apiBase: apiBase,
+      apiHost: apiHost,
+      apiPort: apiPort,
+      websocketEndpoint: wsProtocol + apiHost + wsPort + '/api/v2/websocket',
+      smtpHost: apiHost,
+      smtpPort: '1025',
+      pop3Port: '1100'
+    };
+  }
+
+  $scope.openConnectionModal = function() {
+    $scope.buildConnectionSettings();
+    $('#connect-server-modal').modal('show');
+  }
+
   $scope.backToInbox = function() {
     $scope.preview = null;
     $scope.searching = false;
   }
   $scope.backToInboxFirst = function() {
-    $scope.preview = null;
-    $scope.startIndex = 0;
-    $scope.startMessages = 0;
-    $scope.searching = false;
-    $scope.refresh();
+    $scope.selectInbox();
   }
 
   $scope.toggleStream = function() {
@@ -128,6 +229,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     $scope.source = new WebSocket(host + 'api/v2/websocket');
     $scope.source.addEventListener('message', function(e) {
       $scope.$apply(function() {
+        var message = JSON.parse(e.data);
+        var messageFolder = $scope.getFolderFromMessage(message);
+        $scope.bumpFolderCount(messageFolder);
+        if(typeof(Notification) !== "undefined") {
+          $scope.createNotification(message);
+        }
+
+        if(!$scope.messageMatchesSelectedFolder(message)) {
+          return;
+        }
+
         $scope.totalMessages++;
         if ($scope.startIndex > 0) {
           $scope.startIndex++;
@@ -137,13 +249,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
         if ($scope.countMessages < $scope.itemsPerPage) {
           $scope.countMessages++;
         }
-        var message = JSON.parse(e.data);
         $scope.messages.unshift(message);
         while($scope.messages.length > $scope.itemsPerPage) {
           $scope.messages.pop();
-        }
-        if(typeof(Notification) !== "undefined") {
-          $scope.createNotification(message);
         }
       });
     }, false);
@@ -280,11 +388,15 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     } else {
       url += "?limit=" + $scope.itemsPerPage;
     }
+    if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
+      url += "&folder=" + encodeURIComponent($scope.selectedFolder);
+    }
     $http.get(url).success(function(data) {
       $scope.messages = data.items;
       $scope.totalMessages = data.total;
       $scope.countMessages = data.count;
       $scope.startMessages = data.start;
+      $scope.refreshFolders();
       e.done();
     });
   }
@@ -312,6 +424,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   }
 
   $scope.search = function(kind, text) {
+    $scope.startIndex = 0;
     $scope.searching = true;
     $scope.searchKind = kind;
     $scope.searchedText = text;
@@ -326,6 +439,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     var url = $scope.host + 'api/v2/search?kind=' + $scope.searchKind + '&query=' + $scope.searchedText;
     if($scope.startIndex > 0) {
       url += "&start=" + $scope.startIndex;
+    }
+    if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
+      url += "&folder=" + encodeURIComponent($scope.selectedFolder);
     }
     $http.get(url).success(function(data) {
       $scope.searchMessages = data.items;
@@ -533,6 +649,36 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
 
   $scope.deleteAll = function() {
   	$('#confirm-delete-all').modal('show');
+  }
+
+  $scope.deleteFolder = function(folderName, $event) {
+    if($event) {
+      $event.preventDefault();
+      $event.stopPropagation();
+    }
+    if(!folderName || folderName.length === 0) {
+      return;
+    }
+    if(!window.confirm("Delete all messages in folder '" + folderName + "'?")) {
+      return;
+    }
+
+    var e = $scope.startEvent("Deleting folder messages", folderName, "glyphicon-trash");
+    var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(folderName);
+    $http.delete(url).success(function() {
+      if($scope.selectedFolder === folderName) {
+        $scope.selectedFolder = "";
+      }
+      $scope.preview = null;
+      $scope.startIndex = 0;
+      $scope.startMessages = 0;
+      $scope.searching = false;
+      $scope.refresh();
+      e.done();
+    }).error(function(err) {
+      e.fail();
+      e.error = err;
+    });
   }
 
   $scope.releaseOne = function(message) {

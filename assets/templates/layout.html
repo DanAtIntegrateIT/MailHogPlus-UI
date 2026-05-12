@@ -19,7 +19,7 @@
         <div class="col-md-2 col-sm-3">
           <div class="navbar-header">
             <a class="navbar-brand" href="#">
-              <img src="images/mailhogplus_app_icon.png" height="20" alt="MailHogPlus"> MailHogPlus
+              <img src="images/mailhogplus_app_icon.png" height="20" alt="MailHog+"> MailHog+
             </a>
           </div>
         </div>
@@ -68,8 +68,25 @@
             </li>
 
             <li>
-              <a href="#" ng-click="backToInboxFirst()">
-                Inbox ({{totalMessages}})
+              <a href="#" ng-click="openConnectionModal(); $event.preventDefault();">
+                <span class="glyphicon glyphicon-transfer"></span>
+                Server connection
+              </a>
+            </li>
+
+            <li ng-class="{ active: !selectedFolder }">
+              <a href="#" ng-click="selectInbox(); $event.preventDefault();">
+                Inbox
+              </a>
+            </li>
+            <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
+              <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
+                <span class="glyphicon glyphicon-folder-open"></span>
+                {{ folder.name }}
+                <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
+                  <span class="glyphicon glyphicon-trash"></span>
+                </button>
+                <span class="badge pull-right" ng-if="folder.count > 0">{{folder.count}}</span>
               </a>
             </li>
 
@@ -132,6 +149,52 @@
 
         <div class="col-md-10 col-sm-9 content">
           [: .Content :]
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade brand-connect-modal" id="connect-server-modal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <div class="brand-modal-title">
+              <img src="images/mailhogplus_app_icon.png" alt="MailHog+">
+              <img src="images/mailhogplus_logo_small.png" alt="MailHog Plus">
+            </div>
+            <h4 class="modal-title">Server connection settings</h4>
+            <p>Use these SMTP values in your app or mail client to send test emails into MailHog+.</p>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info">
+              <strong>Required SMTP settings:</strong> Host, Port, and Username.
+              Username creates the folder, so it can be any value you choose.
+            </div>
+            <div class="row">
+              <div class="col-sm-8">
+                <label for="connect-api-host">Server host</label>
+                <input id="connect-api-host" type="text" class="form-control" readonly value="{{ connectionSettings.apiHost }}">
+              </div>
+              <div class="col-sm-4">
+                <label for="connect-smtp-port">SMTP port</label>
+                <input id="connect-smtp-port" type="text" class="form-control" readonly value="{{ connectionSettings.smtpPort }}">
+              </div>
+            </div>
+            <div class="row modal-input-row">
+              <div class="col-sm-6">
+                <label for="connect-smtp-username">SMTP username</label>
+                <input id="connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
+              </div>
+              <div class="col-sm-6">
+                <label for="connect-smtp-password">SMTP password</label>
+                <input id="connect-smtp-password" type="text" class="form-control" readonly value="Optional / any value">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <span class="modal-copyright">Copyright &copy; Integrate IT</span>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
         </div>
       </div>
     </div>
