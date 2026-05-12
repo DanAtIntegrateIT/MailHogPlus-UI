@@ -101,6 +101,13 @@
                 </li>
 
                 <li>
+                  <a href="#" ng-click="openRagExplainedModal(); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-question-sign"></span>
+                    RAG Explained
+                  </a>
+                </li>
+
+                <li>
                   <a href="#" ng-click="openAboutModal(); $event.preventDefault();">
                     <span class="glyphicon glyphicon-info-sign"></span>
                     About
@@ -142,6 +149,116 @@
               Additional fork copyright &copy; 2026 Integrate IT. Released under the
               <a target="_blank" href="https://github.com/DanAtIntegrateIT/MailHogPlus/blob/master/LICENSE.md">MIT License</a>.
             </span>
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade brand-rag-modal" id="rag-explained-modal">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+            <h4 class="modal-title">RAG Explained</h4>
+            <p>How MailHog+ calculates email quality and what your team can tell customers when messages underperform.</p>
+          </div>
+          <div class="modal-body">
+            <div class="rag-intro">
+              MailHog+ starts every message at <strong>10.0</strong> and subtracts points for each issue found. The final value is clamped to <strong>0-10</strong> and rounded to one decimal place.
+            </div>
+
+            <div class="rag-score-grid">
+              <div class="rag-score-item">
+                <span class="rag-score-label">Start score</span>
+                <strong>10.0</strong>
+              </div>
+              <div class="rag-score-item">
+                <span class="rag-score-label">Critical issue</span>
+                <strong>-2.2 each</strong>
+              </div>
+              <div class="rag-score-item">
+                <span class="rag-score-label">Warning</span>
+                <strong>-0.9 each</strong>
+              </div>
+              <div class="rag-score-item">
+                <span class="rag-score-label">Info hint</span>
+                <strong>-0.25 each</strong>
+              </div>
+            </div>
+
+            <table class="table table-bordered rag-status-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Score range</th>
+                  <th>What it means</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="rag-status-pill rag-green">Green</span></td>
+                  <td>8.0 to 10.0</td>
+                  <td>Generally ready to send, with no major quality blockers.</td>
+                </tr>
+                <tr>
+                  <td><span class="rag-status-pill rag-amber">Amber</span></td>
+                  <td>5.0 to 7.9</td>
+                  <td>Usable, but issues may hurt rendering, trust, or deliverability.</td>
+                </tr>
+                <tr>
+                  <td><span class="rag-status-pill rag-red">Red</span></td>
+                  <td>0.0 to 4.9</td>
+                  <td>High risk. Critical problems should be fixed before sending.</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <div class="rag-section">
+              <h5>Checks that MailHog+ runs</h5>
+              <ul>
+                <li><strong>Unsafe HTML:</strong> flags tags like <code>script</code>, <code>form</code>, <code>iframe</code>, <code>video</code>, <code>audio</code>, <code>object</code>, <code>embed</code>, <code>canvas</code>, and form inputs.</li>
+                <li><strong>Client compatibility:</strong> warns on email-unfriendly CSS/layout patterns (flexbox, CSS grid, fixed positioning, and inline SVG).</li>
+                <li><strong>Images and accessibility:</strong> checks missing alt text, image-only emails, and image-heavy content with too little real text.</li>
+                <li><strong>Links and security:</strong> checks for JavaScript links, placeholder/broken links, and non-HTTPS URLs.</li>
+                <li><strong>Inbox readiness:</strong> checks for preheader hints and warns when HTML has no plain-text fallback.</li>
+                <li><strong>Mobile layout:</strong> warns when fixed widths over 640px are used without responsive rules/media queries.</li>
+                <li><strong>Marketing compliance:</strong> if marketing terms are detected, checks that an unsubscribe path is present.</li>
+                <li><strong>Spam-style signals:</strong> detects common spam phrases and excessive punctuation in the subject.</li>
+                <li><strong>Empty content:</strong> flags messages with no readable HTML and no plain text.</li>
+              </ul>
+            </div>
+
+            <div class="rag-section">
+              <h5>How message content is prepared</h5>
+              <ul>
+                <li>The API endpoint <code>GET /api/v2/messages/{id}/quality</code> extracts the first <code>text/html</code> and <code>text/plain</code> parts from MIME content.</li>
+                <li>Body content is decoded when encoded as <code>base64</code> or <code>quoted-printable</code> before checks run.</li>
+              </ul>
+            </div>
+
+            <div class="rag-section">
+              <h5>Packages used in this scoring path</h5>
+              <ul>
+                <li><code>MailHog-Server/emailquality</code> (local scoring engine).</li>
+                <li>Go standard library in scoring: <code>regexp</code>, <code>strings</code>, <code>html</code>, <code>math</code>.</li>
+                <li>Go standard library in message decode path: <code>encoding/base64</code>, <code>mime/quotedprintable</code>, <code>io/ioutil</code>.</li>
+              </ul>
+            </div>
+
+            <div class="rag-section rag-section-customer">
+              <h5>Customer conversation guide</h5>
+              <ul>
+                <li><strong>Red result:</strong> explain that critical blockers were detected (for example unsafe HTML, no unsubscribe on marketing copy, or image-only content), which can directly reduce trust and inbox success.</li>
+                <li><strong>Amber result:</strong> explain that the email can send, but quality risks were found that often lower engagement or increase filtering risk.</li>
+                <li><strong>Green result with poor results:</strong> explain that content quality is good, then investigate sender-domain factors outside this checker.</li>
+              </ul>
+              <p class="rag-footnote">
+                Not currently checked here: SPF/DKIM/DMARC setup, sender/domain reputation, blocklists, complaint or bounce history, and mailbox-provider throttling.
+              </p>
+            </div>
+          </div>
+          <div class="modal-footer">
             <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
           </div>
         </div>

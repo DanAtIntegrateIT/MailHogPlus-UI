@@ -260,6 +260,170 @@ select:focus {
   color: var(--blue-dark);
 }
 
+.brand-rag-modal .modal-dialog {
+  margin: 14px auto;
+}
+
+.brand-rag-modal .modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 28px);
+}
+
+.brand-rag-modal .modal-header {
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding-top: 22px;
+}
+
+.brand-rag-modal .modal-header h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+.brand-rag-modal .modal-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.brand-rag-modal .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.brand-rag-modal .rag-intro {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 10px 12px;
+}
+
+.brand-rag-modal .rag-score-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+
+.brand-rag-modal .rag-score-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-subtle);
+  padding: 8px 10px;
+}
+
+.brand-rag-modal .rag-score-label {
+  display: block;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.brand-rag-modal .rag-score-item strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.brand-rag-modal .rag-status-table {
+  margin-bottom: 14px;
+}
+
+.brand-rag-modal .rag-status-table > thead > tr > th,
+.brand-rag-modal .rag-status-table > tbody > tr > td {
+  border-color: var(--border);
+}
+
+.brand-rag-modal .rag-status-table > thead > tr > th {
+  background: var(--surface-subtle);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.brand-rag-modal .rag-status-table > tbody > tr > td {
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.brand-rag-modal .rag-status-pill {
+  display: inline-block;
+  min-width: 62px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 5px 8px;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.brand-rag-modal .rag-status-pill.rag-green {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.brand-rag-modal .rag-status-pill.rag-amber {
+  background: #fef7e0;
+  color: #8a5a00;
+}
+
+.brand-rag-modal .rag-status-pill.rag-red {
+  background: #fce8e6;
+  color: #a50e0e;
+}
+
+.brand-rag-modal .rag-section {
+  margin-top: 14px;
+}
+
+.brand-rag-modal .rag-section h5 {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+}
+
+.brand-rag-modal .rag-section ul {
+  color: var(--text-muted);
+  margin: 0;
+  padding-left: 18px;
+}
+
+.brand-rag-modal .rag-section li {
+  margin-bottom: 6px;
+}
+
+.brand-rag-modal .rag-section li:last-child {
+  margin-bottom: 0;
+}
+
+.brand-rag-modal .rag-section code {
+  background: #eef3fd;
+  border-radius: 4px;
+  color: #174ea6;
+  padding: 1px 4px;
+}
+
+.brand-rag-modal .rag-section-customer {
+  background: #f8fbff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.brand-rag-modal .rag-footnote {
+  color: var(--text-soft);
+  font-size: 12px;
+  margin: 10px 0 0;
+}
+
 .navbar {
   min-height: 64px;
   margin-bottom: 0;
@@ -912,7 +1076,7 @@ select:focus {
 
 .mail-preview-pane .preview {
   background: var(--app-bg);
-  padding-bottom: 20px;
+  padding-bottom: 8px;
   overflow-y: auto;
   flex: 1;
 }
@@ -1000,6 +1164,18 @@ select:focus {
   color: var(--text-muted);
 }
 
+.quality-inline-help {
+  margin-left: 6px;
+  padding: 0;
+  color: var(--blue);
+  vertical-align: middle;
+}
+
+.quality-inline-help:hover,
+.quality-inline-help:focus {
+  color: var(--blue-dark);
+}
+
 .nav-tabs {
   border-bottom-color: var(--border);
 }
@@ -1069,6 +1245,12 @@ select:focus {
 
 .quality-pane {
   padding: 16px;
+}
+
+.quality-pane-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
 }
 
 .quality-loading,
@@ -1654,6 +1836,18 @@ select:focus {
     margin-right: auto;
     float: none;
     padding-top: 0;
+  }
+
+  .brand-rag-modal .rag-score-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .brand-rag-modal .modal-dialog {
+    margin: 8px;
+  }
+
+  .brand-rag-modal .modal-content {
+    max-height: calc(100vh - 16px);
   }
 
   .settings-page {

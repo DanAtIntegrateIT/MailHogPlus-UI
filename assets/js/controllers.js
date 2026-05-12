@@ -818,6 +818,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $('#about-mailhogplus-modal').modal('show');
   }
 
+  $scope.openRagExplainedModal = function() {
+    $('#rag-explained-modal').modal('show');
+  }
+
   // Backward compatibility for existing template hooks.
   $scope.openConnectionModal = $scope.openAboutModal;
 
@@ -1192,7 +1196,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if(tabContent.length === 0) {
       return;
     }
-    var available = preview.innerHeight() - tabContent.position().top - 12;
+    var available = preview.innerHeight() - tabContent.position().top - 2;
     if(available > 120) {
       tabContent.height(available);
       tabContent.find('.tab-pane').height(available);

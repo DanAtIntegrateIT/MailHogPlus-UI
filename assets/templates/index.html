@@ -431,6 +431,12 @@
                   <span ng-if="preview.quality" class="quality-inline" ng-class="qualityClass(preview.quality)">
                     Email quality: {{ qualityScoreText(preview.quality) }} / 10 - {{ preview.quality.ragStatus }}
                   </span>
+                  <button type="button"
+                          class="btn btn-link btn-xs quality-inline-help"
+                          ng-if="preview.quality || preview.qualityLoading || preview.qualityError"
+                          ng-click="openRagExplainedModal(); $event.preventDefault(); $event.stopPropagation();">
+                    What does this mean?
+                  </button>
                   <span ng-if="preview.qualityError" class="quality-inline quality-unavailable">{{ preview.qualityError }}</span>
                 </td>
               </tr>
@@ -471,6 +477,12 @@
           <div class="tab-pane" ng-class="{ active: !hasHTML(preview) }" id="preview-plain" ng-bind-html="formatMessagePlain(preview)"></div>
           <div class="tab-pane" id="preview-source">{{ getSource(preview) }}</div>
           <div class="tab-pane quality-pane" id="preview-quality">
+            <div class="quality-pane-actions">
+              <button type="button" class="btn btn-default btn-xs" ng-click="openRagExplainedModal(); $event.preventDefault();">
+                <i class="glyphicon glyphicon-question-sign"></i>
+                How scoring works
+              </button>
+            </div>
             <div ng-if="preview.qualityLoading" class="quality-loading">Checking email quality...</div>
             <div ng-if="preview.qualityError" class="quality-error">{{ preview.qualityError }}</div>
             <div ng-if="preview.quality">
