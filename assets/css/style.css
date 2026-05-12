@@ -248,6 +248,16 @@ select:focus {
   color: var(--text-soft);
   font-size: 12px;
   text-align: left;
+  line-height: 1.45;
+}
+
+.brand-about-modal .modal-copyright a {
+  color: var(--blue);
+}
+
+.brand-about-modal .modal-copyright a:hover,
+.brand-about-modal .modal-copyright a:focus {
+  color: var(--blue-dark);
 }
 
 .navbar {
