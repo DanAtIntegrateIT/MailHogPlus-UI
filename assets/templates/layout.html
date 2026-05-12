@@ -67,17 +67,17 @@
               </a>
             </li>
 
-            <li>
-              <a href="#" ng-click="openConnectionModal(); $event.preventDefault();">
-                <span class="glyphicon glyphicon-transfer"></span>
-                Server connection
-              </a>
-            </li>
-
             <li ng-class="{ active: showSettings }">
               <a href="#" ng-click="openSettings(); $event.preventDefault();">
                 <span class="glyphicon glyphicon-cog"></span>
                 Settings
+              </a>
+            </li>
+
+            <li>
+              <a href="#" ng-click="openAboutModal(); $event.preventDefault();">
+                <span class="glyphicon glyphicon-info-sign"></span>
+                About
               </a>
             </li>
 
@@ -105,53 +105,6 @@
             </li>
           </ul>
 
-          <div class="well jim-well">
-            <h3>Jim</h3>
-            <p>
-              Jim is a chaos monkey.<br>
-              <a href="https://github.com/DanAtIntegrateIT/MailHogPlus/blob/master/docs/JIM.md" target="_blank">Find out more at GitHub</a>.
-            </p>
-            <div ng-if="jim">
-              <a href="#" ng-click="disableJim()" class="btn btn-xs btn-danger">Disable Jim</a>
-            </div>
-            <div ng-if="jim" class="jim-config">
-              <div class="jim-config-item">
-                <strong>Accept chance</strong>
-                <span>{{ jim.AcceptChance * 100 }}%</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Disconnect chance</strong>
-                <span>{{ jim.DisconnectChance * 100 }}%</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Link speed affect chance</strong>
-                <span>{{ jim.LinkSpeedAffect * 100}}%</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Link speed minimum</strong>
-                <span>{{ jim.LinkSpeedMin }}kbps</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Link speed maximum</strong>
-                <span>{{ jim.LinkSpeedMax }}kbps</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Reject sender chance</strong>
-                <span>{{ jim.RejectSenderChance * 100 }}%</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Reject recipient chance</strong>
-                <span>{{ jim.RejectRecipientChance * 100 }}%</span>
-              </div>
-              <div class="jim-config-item">
-                <strong>Reject auth chance</strong>
-                <span>{{ jim.RejectAuthChance * 100 }}%</span>
-              </div>
-            </div>
-            <div ng-if="!jim">
-              <a href="#" ng-click="enableJim()" class="btn btn-xs btn-default">Enable Jim</a>
-            </div>
-          </div>
         </div>
 
         <div class="col-md-10 col-sm-9 content">
@@ -160,42 +113,23 @@
       </div>
     </div>
 
-    <div class="modal fade brand-connect-modal" id="connect-server-modal">
+    <div class="modal fade brand-about-modal" id="about-mailhogplus-modal">
       <div class="modal-dialog">
         <div class="modal-content">
           <div class="modal-header">
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <div class="brand-modal-title">
-              <img src="images/mailhogplus_app_icon.png" alt="MailHog+">
-              <img src="images/mailhogplus_logo_small.png" alt="MailHog Plus">
-            </div>
-            <h4 class="modal-title">Server connection settings</h4>
-            <p>Use these SMTP values in your app or mail client to send test emails into MailHog+.</p>
+            <img class="about-logo-large" src="images/mailhogplus_logo_large.png" alt="MailHog Plus">
+            <h4 class="modal-title">About MailHog+</h4>
+            <p>A clean, local-first email testing suite by Integrate IT.</p>
           </div>
           <div class="modal-body">
-            <div class="alert alert-info">
-              <strong>Required SMTP settings:</strong> Host, Port, and Username.
-              Username creates the folder, so it can be any value you choose.
+            <div class="about-note">
+              Designed for fast local email workflows with folder routing, message retention controls, and a professional multi-pane UI.
             </div>
-            <div class="row">
-              <div class="col-sm-8">
-                <label for="connect-api-host">Server host</label>
-                <input id="connect-api-host" type="text" class="form-control" readonly value="{{ connectionSettings.apiHost }}">
-              </div>
-              <div class="col-sm-4">
-                <label for="connect-smtp-port">SMTP port</label>
-                <input id="connect-smtp-port" type="text" class="form-control" readonly value="{{ connectionSettings.smtpPort }}">
-              </div>
-            </div>
-            <div class="row modal-input-row">
-              <div class="col-sm-6">
-                <label for="connect-smtp-username">SMTP username</label>
-                <input id="connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
-              </div>
-              <div class="col-sm-6">
-                <label for="connect-smtp-password">SMTP password</label>
-                <input id="connect-smtp-password" type="text" class="form-control" readonly value="Optional / any value">
-              </div>
+            <div class="about-version">
+              <strong>Project:</strong> MailHog+<br>
+              <strong>Repository:</strong>
+              <a target="_blank" href="https://github.com/DanAtIntegrateIT/MailHogPlus">github.com/DanAtIntegrateIT/MailHogPlus</a>
             </div>
           </div>
           <div class="modal-footer">

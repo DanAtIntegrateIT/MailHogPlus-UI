@@ -185,6 +185,71 @@ select:focus {
   font-size: 12px;
 }
 
+.brand-about-modal .modal-content {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.brand-about-modal .modal-header {
+  text-align: center;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  padding-top: 24px;
+}
+
+.brand-about-modal .about-logo-large {
+  display: block;
+  max-width: 320px;
+  width: 76%;
+  height: auto;
+  margin: 2px auto 14px;
+}
+
+.brand-about-modal .modal-header h4 {
+  margin-top: 0;
+  margin-bottom: 5px;
+}
+
+.brand-about-modal .modal-header p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.brand-about-modal .about-note {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.brand-about-modal .about-version {
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.brand-about-modal .modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.brand-about-modal .modal-footer:before,
+.brand-about-modal .modal-footer:after {
+  content: none;
+  display: none;
+}
+
+.brand-about-modal .modal-copyright {
+  margin-right: auto;
+  color: var(--text-soft);
+  font-size: 12px;
+  text-align: left;
+}
+
 .navbar {
   min-height: 64px;
   margin-bottom: 0;
@@ -501,6 +566,12 @@ select:focus {
   color: var(--blue-dark);
 }
 
+.favorite-filter-btn.active {
+  background: #fff7df;
+  border-color: #f2d377;
+  color: #8a5a00;
+}
+
 .message-count {
   padding-right: 8px;
   color: var(--text-muted);
@@ -622,6 +693,7 @@ select:focus {
 }
 
 .msglist-message {
+  position: relative;
   width: 100%;
   box-sizing: border-box;
   display: grid;
@@ -630,7 +702,7 @@ select:focus {
   column-gap: 14px;
   min-height: 72px;
   border-bottom: 1px solid #edf0f5;
-  padding: 14px 16px;
+  padding: 14px 16px 14px 46px;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 100ms ease, box-shadow 100ms ease;
@@ -657,6 +729,50 @@ select:focus {
   white-space: nowrap;
 }
 
+.message-favorite-btn {
+  position: absolute;
+  left: 14px;
+  top: 18px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #b6beca;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.message-favorite-btn .glyphicon {
+  top: 0;
+}
+
+.message-favorite-btn:hover,
+.message-favorite-btn:focus {
+  background: #eef2f8;
+  color: #8b96a8;
+  outline: none;
+}
+
+.message-favorite-btn.active {
+  color: #e4a700;
+}
+
+.message-attachment-indicator {
+  position: absolute;
+  left: 18px;
+  top: 46px;
+  color: #9098a8;
+  line-height: 1;
+}
+
+.message-attachment-indicator .glyphicon {
+  font-size: 12px;
+  top: 0;
+}
+
 .message-recipient {
   color: var(--text-soft);
   font-size: 12px;
@@ -668,6 +784,15 @@ select:focus {
 
 .message-main {
   min-width: 0;
+}
+
+.msglist-message .subject {
+  display: block;
+  color: #59616f;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .msglist-message .subject.unread {
@@ -818,14 +943,28 @@ select:focus {
   border-bottom: 0;
 }
 
+.attachment-pane-actions {
+  padding: 12px 16px 4px;
+}
+
+.attachment-meta {
+  color: var(--text-soft);
+  margin-left: 6px;
+}
+
 .settings-page {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   padding: 22px;
   background: var(--app-bg);
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
 }
 
 .settings-card {
-  max-width: 640px;
+  max-width: 980px;
+  margin: 0 auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -848,6 +987,20 @@ select:focus {
   margin-top: 16px;
 }
 
+.settings-primary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.settings-primary-grid .form-group {
+  margin-bottom: 0;
+}
+
+.settings-primary-span-full {
+  grid-column: 1 / -1;
+}
+
 .settings-card .btn-primary {
   background: var(--blue);
   border-color: var(--blue);
@@ -857,6 +1010,168 @@ select:focus {
 .settings-card .btn-primary:focus {
   background: var(--blue-dark);
   border-color: var(--blue-dark);
+}
+
+.settings-section {
+  margin-top: 22px;
+  padding: 18px 16px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.settings-section h4 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.settings-section p {
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.settings-section .alert-info {
+  background: var(--blue-soft);
+  border-color: #c8dcff;
+  border-radius: 8px;
+  color: #174ea6;
+}
+
+.settings-section label {
+  color: #3c4043;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin-bottom: 7px;
+  margin-top: 4px;
+  text-transform: uppercase;
+}
+
+.settings-section .form-control[readonly] {
+  background: var(--surface-subtle);
+  border-color: var(--border);
+  color: var(--text);
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  font-weight: 500;
+}
+
+.settings-connection-row {
+  margin-top: 12px;
+}
+
+.settings-connection-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 12px;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.settings-connection-grid .settings-col {
+  padding-left: 0;
+  padding-right: 0;
+  width: 100%;
+}
+
+.settings-connection-row.settings-connection-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-folder-editor {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.settings-folder-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 36px;
+  margin-bottom: 10px;
+}
+
+.settings-folder-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  background: var(--blue-soft);
+  border: 1px solid #c6dafc;
+  border-radius: 999px;
+  color: var(--blue-dark);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  padding: 4px 5px 4px 10px;
+  gap: 6px;
+}
+
+.settings-folder-pill-label {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-folder-pill-remove {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: var(--blue-dark);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 16px;
+  font-weight: 700;
+  height: 18px;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  width: 18px;
+}
+
+.settings-folder-pill-remove:hover,
+.settings-folder-pill-remove:focus {
+  background: rgba(23, 78, 166, 0.15);
+  outline: none;
+}
+
+.settings-folder-empty {
+  color: var(--text-soft);
+  font-size: 12px;
+  padding: 8px 2px;
+}
+
+.settings-folder-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-folder-input-row .form-control {
+  flex: 1 1 auto;
+}
+
+.settings-folder-input-row .btn {
+  min-width: 84px;
+}
+
+.settings-jim-section .settings-jim-actions {
+  margin-bottom: 10px;
+}
+
+.settings-jim-section .jim-config {
+  margin-top: 0;
+}
+
+.settings-jim-section .jim-doc-link {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 @media (max-width: 767px) {
@@ -923,7 +1238,17 @@ select:focus {
   .msglist-message {
     grid-template-columns: 1fr;
     row-gap: 6px;
-    padding: 12px 14px;
+    padding: 12px 14px 12px 40px;
+  }
+
+  .message-favorite-btn {
+    left: 10px;
+    top: 14px;
+  }
+
+  .message-attachment-indicator {
+    left: 14px;
+    top: 40px;
   }
 
   .message-meta {
@@ -937,14 +1262,39 @@ select:focus {
     text-align: left;
   }
 
-  .brand-connect-modal .modal-footer {
-    display: block;
-    text-align: right;
+  .brand-about-modal .modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .brand-connect-modal .modal-copyright {
-    display: block;
-    float: left;
-    padding-top: 8px;
+  .brand-about-modal .modal-copyright {
+    margin-right: auto;
+    float: none;
+    padding-top: 0;
+  }
+
+  .settings-folder-input-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-folder-input-row .btn {
+    width: 100%;
+  }
+
+  .settings-primary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-primary-span-full {
+    grid-column: auto;
+  }
+
+  .settings-connection-grid,
+  .settings-connection-row.settings-connection-grid {
+    grid-template-columns: 1fr;
   }
 }
