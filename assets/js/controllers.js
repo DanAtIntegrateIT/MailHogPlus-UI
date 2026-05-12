@@ -124,6 +124,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.selectedOutgoingSMTP = ""
   $scope.saveSMTPServer = false;
   $scope.selectedFolder = "";
+  $scope.folderPendingDelete = "";
   $scope.folders = [];
   $scope.showSettings = false;
   $scope.settingsLoading = false;
@@ -786,8 +787,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return cleaned;
   }
 
-  $scope.addDefaultFolder = function() {
-    var folderName = ($scope.settingsDefaultFolderInput || "").trim();
+  $scope.addDefaultFolder = function(inputValue) {
+    var folderName = (inputValue || $scope.settingsDefaultFolderInput || "").trim();
+    if(folderName.length === 0) {
+      var inputElement = document.getElementById('settings-default-folder-input');
+      if(inputElement && inputElement.value) {
+        folderName = inputElement.value.trim();
+      }
+    }
     if(folderName.length === 0) {
       return;
     }
@@ -803,8 +810,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
 
     existing.push(folderName);
-    $scope.settingsForm.defaultFolders = existing;
+    $scope.settingsForm.defaultFolders = existing.slice(0);
     $scope.settingsDefaultFolderInput = "";
+    var settingsFolderInput = document.getElementById('settings-default-folder-input');
+    if(settingsFolderInput) {
+      settingsFolderInput.value = "";
+    }
   }
 
   $scope.removeDefaultFolder = function(folderName) {
@@ -1477,15 +1488,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   	$('#confirm-delete-all').modal('show');
   }
 
-  $scope.deleteFolder = function(folderName, $event) {
-    if($event) {
-      $event.preventDefault();
-      $event.stopPropagation();
-    }
+  $scope.clearPendingFolderDelete = function() {
+    $scope.folderPendingDelete = "";
+  }
+
+  $scope.performFolderDelete = function(folderName) {
     if(!folderName || folderName.length === 0) {
-      return;
-    }
-    if(!window.confirm("Delete all messages in folder '" + folderName + "'?")) {
       return;
     }
 
@@ -1508,6 +1516,25 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       e.fail();
       e.error = err;
     });
+  }
+
+  $scope.deleteFolder = function(folderName, $event) {
+    if($event) {
+      $event.preventDefault();
+      $event.stopPropagation();
+    }
+    if(!folderName || folderName.length === 0) {
+      return;
+    }
+    $scope.folderPendingDelete = folderName;
+    $('#confirm-delete-folder').modal('show');
+  }
+
+  $scope.deleteFolderConfirm = function() {
+    $('#confirm-delete-folder').modal('hide');
+    var folderName = $scope.folderPendingDelete;
+    $scope.clearPendingFolderDelete();
+    $scope.performFolderDelete(folderName);
   }
 
   $scope.releaseOne = function(message) {

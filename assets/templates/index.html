@@ -86,11 +86,12 @@
         </div>
         <div class="settings-folder-input-row">
           <input type="text"
+                 id="settings-default-folder-input"
                  class="form-control"
                  ng-model="settingsDefaultFolderInput"
-                 ng-key-enter="addDefaultFolder()"
+                 ng-key-enter="addDefaultFolder(settingsDefaultFolderInput)"
                  placeholder="Add folder name">
-          <button type="button" class="btn btn-default" ng-click="addDefaultFolder()">Add</button>
+          <button type="button" class="btn btn-default" ng-click="addDefaultFolder(settingsDefaultFolderInput)">Add</button>
         </div>
       </div>
     </div>
@@ -498,6 +499,24 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-danger" ng-click="deleteAllConfirm()">Delete all messages</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="confirm-delete-folder">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-hidden="true" ng-click="clearPendingFolderDelete()">&times;</button>
+        <h4 class="modal-title">Delete folder messages?</h4>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete all messages in folder <strong>{{ folderPendingDelete }}</strong>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="clearPendingFolderDelete()">Cancel</button>
+        <button type="button" class="btn btn-danger" ng-click="deleteFolderConfirm()">Delete folder messages</button>
       </div>
     </div>
   </div>
