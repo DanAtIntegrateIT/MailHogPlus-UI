@@ -170,7 +170,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     var title = "Mail from " + $scope.getSender(message);
     var options = {
       body: $scope.tryDecodeMime(message.Content.Headers["Subject"][0]),
-      tag: "MailHog",
+      tag: "MailHogPlus",
       icon: "images/hog.png"
     };
     var notification = new Notification(title, options);
