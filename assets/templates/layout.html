@@ -58,51 +58,57 @@
 
     <div class="container-fluid">
       <div class="row">
-        <div class="col-md-2 col-sm-3">
-          <ul class="nav nav-pills nav-stacked">
-            <li>
-              <a href="#" title="Event stream connected" ng-click="toggleStream()">
-                <span class="glyphicon glyphicon-off {{ hasEventSource ? 'has-event-source' : 'no-event-source' }}"></span>
-                {{ hasEventSource ? 'Connected' : 'Disconnected' }}
-              </a>
-            </li>
+        <div class="col-md-2 col-sm-3 sidebar-column">
+          <div class="sidebar-layout">
+            <div class="sidebar-top">
+              <ul class="nav nav-pills nav-stacked sidebar-nav sidebar-nav-top">
+                <li class="inbox-link" ng-class="{ active: !selectedFolder }">
+                  <a href="#" ng-click="selectInbox(); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-inbox"></span>
+                    Inbox
+                    <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteInboxMessages($event)" title="Delete inbox messages">
+                      <span class="glyphicon glyphicon-trash"></span>
+                    </button>
+                  </a>
+                </li>
+                <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
+                  <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-folder-open folder-icon" ng-class="{ 'folder-icon-default': isDefaultFolder(folder.name) }" title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
+                    {{ folder.name }}
+                    <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
+                      <span class="glyphicon glyphicon-trash"></span>
+                    </button>
+                    <span class="badge pull-right" ng-if="folder.count > 0">{{folder.count}}</span>
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-            <li ng-class="{ active: showSettings }">
-              <a href="#" ng-click="openSettings(); $event.preventDefault();">
-                <span class="glyphicon glyphicon-cog"></span>
-                Settings
-              </a>
-            </li>
+            <div class="sidebar-bottom">
+              <ul class="nav nav-pills nav-stacked sidebar-nav sidebar-nav-bottom">
+                <li>
+                  <a href="#" title="Event stream connected" ng-click="toggleStream()">
+                    <span class="glyphicon glyphicon-off {{ hasEventSource ? 'has-event-source' : 'no-event-source' }}"></span>
+                    {{ hasEventSource ? 'Connected' : 'Disconnected' }}
+                  </a>
+                </li>
 
-            <li>
-              <a href="#" ng-click="openAboutModal(); $event.preventDefault();">
-                <span class="glyphicon glyphicon-info-sign"></span>
-                About
-              </a>
-            </li>
+                <li ng-class="{ active: showSettings }">
+                  <a href="#" ng-click="openSettings(); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-cog"></span>
+                    Settings
+                  </a>
+                </li>
 
-            <li class="inbox-link" ng-class="{ active: !selectedFolder }">
-              <a href="#" ng-click="selectInbox(); $event.preventDefault();">
-                <span class="glyphicon glyphicon-inbox"></span>
-                Inbox
-                <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteInboxMessages($event)" title="Delete inbox messages">
-                  <span class="glyphicon glyphicon-trash"></span>
-                </button>
-              </a>
-            </li>
-            <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
-              <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
-                <span class="glyphicon glyphicon-folder-open folder-icon" ng-class="{ 'folder-icon-default': isDefaultFolder(folder.name) }" title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
-                {{ folder.name }}
-                <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
-                  <span class="glyphicon glyphicon-trash"></span>
-                </button>
-                <span class="badge pull-right" ng-if="folder.count > 0">{{folder.count}}</span>
-              </a>
-            </li>
-
-          </ul>
-
+                <li>
+                  <a href="#" ng-click="openAboutModal(); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-info-sign"></span>
+                    About
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div class="col-md-10 col-sm-9 content">
