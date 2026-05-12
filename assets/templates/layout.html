@@ -81,9 +81,13 @@
               </a>
             </li>
 
-            <li ng-class="{ active: !selectedFolder }">
+            <li class="inbox-link" ng-class="{ active: !selectedFolder }">
               <a href="#" ng-click="selectInbox(); $event.preventDefault();">
+                <span class="glyphicon glyphicon-inbox"></span>
                 Inbox
+                <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteInboxMessages($event)" title="Delete inbox messages">
+                  <span class="glyphicon glyphicon-trash"></span>
+                </button>
               </a>
             </li>
             <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">

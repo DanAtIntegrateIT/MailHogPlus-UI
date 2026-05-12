@@ -50,6 +50,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.itemsPerPage = 50
   $scope.startIndex = 0
+  $scope.sortOrder = "desc";
 
   $scope.viewMode = "columns";
   $scope.columnsListWidth = 46;
@@ -92,6 +93,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         $scope.pendingSavedFolderSelection = savedFolder;
       }
       $scope.showFavoritesOnly = localStorage.getItem("mailhogShowFavoritesOnly") === "1";
+      var savedSortOrder = localStorage.getItem("mailhogSortOrder");
+      if(savedSortOrder === "asc" || savedSortOrder === "desc") {
+        $scope.sortOrder = savedSortOrder;
+      }
       try {
         var savedFavoriteState = localStorage.getItem("mailhogFavoriteStateByMessageID");
         if(savedFavoriteState) {
@@ -125,6 +130,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.saveSMTPServer = false;
   $scope.selectedFolder = "";
   $scope.folderPendingDelete = "";
+  $scope.folderPendingDeleteIsInbox = false;
   $scope.folders = [];
   $scope.showSettings = false;
   $scope.settingsLoading = false;
@@ -219,6 +225,56 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.folders.sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
     });
+  }
+
+  $scope.normalizeSortOrder = function(order) {
+    return (order || "").toLowerCase() === "asc" ? "asc" : "desc";
+  }
+
+  $scope.setSortOrder = function(order) {
+    var normalized = $scope.normalizeSortOrder(order);
+    if($scope.sortOrder === normalized) {
+      return;
+    }
+    $scope.sortOrder = normalized;
+    $scope.startIndex = 0;
+    $scope.startMessages = 0;
+    $scope.startSearchMessages = 0;
+    if(typeof(Storage) !== "undefined") {
+      localStorage.setItem("mailhogSortOrder", $scope.sortOrder);
+    }
+    $scope.refresh();
+  }
+
+  $scope.getPagingState = function() {
+    if($scope.searching) {
+      return {
+        start: $scope.startSearchMessages || 0,
+        count: $scope.countSearchMessages || 0,
+        total: $scope.totalSearchMessages || 0
+      };
+    }
+    return {
+      start: $scope.startMessages || 0,
+      count: $scope.countMessages || 0,
+      total: $scope.totalMessages || 0
+    };
+  }
+
+  $scope.canShowNewer = function() {
+    var paging = $scope.getPagingState();
+    if($scope.sortOrder === "asc") {
+      return (paging.start + paging.count) < paging.total;
+    }
+    return paging.start > 0;
+  }
+
+  $scope.canShowOlder = function() {
+    var paging = $scope.getPagingState();
+    if($scope.sortOrder === "asc") {
+      return paging.start > 0;
+    }
+    return (paging.start + paging.count) < paging.total;
   }
 
   $scope.bumpFolderCount = function(folderName) {
@@ -1064,6 +1120,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         }
 
         $scope.totalMessages++;
+        if($scope.sortOrder === "asc") {
+          if($scope.startIndex > 0) {
+            return;
+          }
+          if($scope.countMessages < $scope.itemsPerPage) {
+            $scope.countMessages++;
+            $scope.messages.push(message);
+          }
+          return;
+        }
+
         if ($scope.startIndex > 0) {
           $scope.startIndex++;
           $scope.startMessages++;
@@ -1254,6 +1321,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
       url += "&folder=" + encodeURIComponent($scope.selectedFolder);
     }
+    url += "&order=" + encodeURIComponent($scope.sortOrder);
     $http.get(url).success(function(data) {
       $scope.messages = data.items || [];
       $scope.totalMessages = data.total;
@@ -1308,9 +1376,16 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.fetchSettings();
 
   $scope.showNewer = function() {
-    $scope.startIndex -= $scope.itemsPerPage;
-    if($scope.startIndex < 0) {
-      $scope.startIndex = 0
+    if(!$scope.canShowNewer()) {
+      return;
+    }
+    if($scope.sortOrder === "asc") {
+      $scope.startIndex += $scope.itemsPerPage;
+    } else {
+      $scope.startIndex -= $scope.itemsPerPage;
+      if($scope.startIndex < 0) {
+        $scope.startIndex = 0
+      }
     }
     $scope.refresh();
   }
@@ -1324,7 +1399,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   }
 
   $scope.showOlder = function() {
-    $scope.startIndex += $scope.itemsPerPage;
+    if(!$scope.canShowOlder()) {
+      return;
+    }
+    if($scope.sortOrder === "asc") {
+      $scope.startIndex -= $scope.itemsPerPage;
+      if($scope.startIndex < 0) {
+        $scope.startIndex = 0;
+      }
+    } else {
+      $scope.startIndex += $scope.itemsPerPage;
+    }
     $scope.refresh();
   }
 
@@ -1346,6 +1431,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if($scope.startIndex > 0) {
       url += "&start=" + $scope.startIndex;
     }
+    url += "&limit=" + $scope.itemsPerPage;
+    url += "&order=" + encodeURIComponent($scope.sortOrder);
     if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
       url += "&folder=" + encodeURIComponent($scope.selectedFolder);
     }
@@ -1569,18 +1656,23 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.clearPendingFolderDelete = function() {
     $scope.folderPendingDelete = "";
+    $scope.folderPendingDeleteIsInbox = false;
   }
 
-  $scope.performFolderDelete = function(folderName) {
-    if(!folderName || folderName.length === 0) {
+  $scope.performFolderDelete = function(folderName, allowInbox) {
+    var targetFolder = (folderName || "").trim();
+    var isInboxTarget = !!allowInbox || $scope.normalizeFolderName(targetFolder).length === 0;
+    if(!isInboxTarget && targetFolder.length === 0) {
       return;
     }
 
-    var e = $scope.startEvent("Deleting folder messages", folderName, "glyphicon-trash");
-    var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(folderName);
+    var eventLabel = isInboxTarget ? "Inbox" : targetFolder;
+    var eventName = isInboxTarget ? "Deleting inbox messages" : "Deleting folder messages";
+    var e = $scope.startEvent(eventName, eventLabel, "glyphicon-trash");
+    var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(targetFolder);
     $http.delete(url).success(function() {
-      delete $scope.lastSelectedMessageByFolder[$scope.getFolderSelectionKey(folderName)];
-      if($scope.normalizeFolderName($scope.selectedFolder) === $scope.normalizeFolderName(folderName)) {
+      delete $scope.lastSelectedMessageByFolder[$scope.getFolderSelectionKey(targetFolder)];
+      if($scope.normalizeFolderName($scope.selectedFolder) === $scope.normalizeFolderName(targetFolder)) {
         $scope.selectedFolder = "";
         $scope.setSavedFolderPreference("");
       }
@@ -1606,14 +1698,26 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     $scope.folderPendingDelete = folderName;
+    $scope.folderPendingDeleteIsInbox = false;
+    $('#confirm-delete-folder').modal('show');
+  }
+
+  $scope.deleteInboxMessages = function($event) {
+    if($event) {
+      $event.preventDefault();
+      $event.stopPropagation();
+    }
+    $scope.folderPendingDelete = "";
+    $scope.folderPendingDeleteIsInbox = true;
     $('#confirm-delete-folder').modal('show');
   }
 
   $scope.deleteFolderConfirm = function() {
     $('#confirm-delete-folder').modal('hide');
     var folderName = $scope.folderPendingDelete;
+    var deleteInboxMessages = $scope.folderPendingDeleteIsInbox;
     $scope.clearPendingFolderDelete();
-    $scope.performFolderDelete(folderName);
+    $scope.performFolderDelete(folderName, deleteInboxMessages);
   }
 
   $scope.releaseOne = function(message) {

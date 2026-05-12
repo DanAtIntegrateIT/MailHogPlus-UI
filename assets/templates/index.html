@@ -57,22 +57,20 @@
           <strong>Required SMTP settings:</strong> Host, Port, and Username.
           Username creates the folder, so it can be any value you choose.
         </div>
-        <div class="row settings-connection-grid">
-          <div class="col-sm-8 settings-col">
+        <div class="settings-connection-fields">
+          <div class="settings-field">
             <label for="settings-connect-api-host">Server host</label>
             <input id="settings-connect-api-host" type="text" class="form-control" readonly ng-value="connectionSettings.apiHost">
           </div>
-          <div class="col-sm-4 settings-col">
+          <div class="settings-field">
             <label for="settings-connect-smtp-port">SMTP port</label>
             <input id="settings-connect-smtp-port" type="text" class="form-control" readonly ng-value="connectionSettings.smtpPort">
           </div>
-        </div>
-        <div class="row settings-connection-row settings-connection-grid">
-          <div class="col-sm-6 settings-col">
+          <div class="settings-field">
             <label for="settings-connect-smtp-username">SMTP username</label>
             <input id="settings-connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
           </div>
-          <div class="col-sm-6 settings-col">
+          <div class="settings-field">
             <label for="settings-connect-smtp-password">SMTP password</label>
             <input id="settings-connect-smtp-password" type="text" class="form-control" readonly value="Optional / any value">
           </div>
@@ -199,6 +197,11 @@
         <i class="glyphicon" ng-class="showFavoritesOnly ? 'glyphicon-star' : 'glyphicon-star-empty'"></i>
       </button>
 
+      <select class="form-control sort-order-select" ng-model="sortOrder" ng-change="setSortOrder(sortOrder)" title="Sort order">
+        <option value="desc">Newest first</option>
+        <option value="asc">Oldest first</option>
+      </select>
+
       <span class="pull-right">
         <span class="message-count" ng-if="(totalMessages || 0) != 0">
           <select ng-model="itemsPerPage" ng-change="showUpdated(itemsPerPage)">
@@ -213,12 +216,12 @@
           <strong>{{ totalMessages }}</strong>
         </span>
 
-        <button class="btn btn-default" ng-click="showNewer()" title="Newer" ng-class="{'disabled':startMessages<=0}">
-          <i class="glyphicon glyphicon-chevron-left"></i>
+        <button class="btn btn-default" ng-click="showNewer()" title="Newer" ng-class="{ 'disabled': !canShowNewer() }">
+          <i class="glyphicon" ng-class="sortOrder === 'asc' ? 'glyphicon-chevron-right' : 'glyphicon-chevron-left'"></i>
         </button>
 
-        <button class="btn btn-default" ng-click="showOlder()" title="Older" ng-class="{'disabled':startMessages+countMessages>=totalMessages}">
-          <i class="glyphicon glyphicon-chevron-right"></i>
+        <button class="btn btn-default" ng-click="showOlder()" title="Older" ng-class="{ 'disabled': !canShowOlder() }">
+          <i class="glyphicon" ng-class="sortOrder === 'asc' ? 'glyphicon-chevron-left' : 'glyphicon-chevron-right'"></i>
         </button>
       </span>
     </div>
@@ -244,6 +247,11 @@
         <i class="glyphicon" ng-class="showFavoritesOnly ? 'glyphicon-star' : 'glyphicon-star-empty'"></i>
       </button>
 
+      <select class="form-control sort-order-select" ng-model="sortOrder" ng-change="setSortOrder(sortOrder)" title="Sort order">
+        <option value="desc">Newest first</option>
+        <option value="asc">Oldest first</option>
+      </select>
+
       <div class="spacer"></div>
       <span>Searching for messages <strong>{{searchKind}}</strong> {{ searchedText }}</span>
 
@@ -254,12 +262,12 @@
           <strong>{{ totalSearchMessages || 0 }}</strong>
         </span>
 
-        <button class="btn btn-default" ng-click="showNewer()" title="Newer" ng-class="{'disabled':startSearchMessages<=0}">
-          <i class="glyphicon glyphicon-chevron-left"></i>
+        <button class="btn btn-default" ng-click="showNewer()" title="Newer" ng-class="{ 'disabled': !canShowNewer() }">
+          <i class="glyphicon" ng-class="sortOrder === 'asc' ? 'glyphicon-chevron-right' : 'glyphicon-chevron-left'"></i>
         </button>
 
-        <button class="btn btn-default" ng-click="showOlder()" title="Older" ng-class="{'disabled':startSearchMessages+countSearchMessages>=totalSearchMessages}">
-          <i class="glyphicon glyphicon-chevron-right"></i>
+        <button class="btn btn-default" ng-click="showOlder()" title="Older" ng-class="{ 'disabled': !canShowOlder() }">
+          <i class="glyphicon" ng-class="sortOrder === 'asc' ? 'glyphicon-chevron-left' : 'glyphicon-chevron-right'"></i>
         </button>
       </span>
     </div>
@@ -542,14 +550,15 @@
     <div class="modal-content">
       <div class="modal-header">
         <button type="button" class="close" data-dismiss="modal" aria-hidden="true" ng-click="clearPendingFolderDelete()">&times;</button>
-        <h4 class="modal-title">Delete folder messages?</h4>
+        <h4 class="modal-title">{{ folderPendingDeleteIsInbox ? 'Delete inbox messages?' : 'Delete folder messages?' }}</h4>
       </div>
       <div class="modal-body">
-        <p>Are you sure you want to delete all messages in folder <strong>{{ folderPendingDelete }}</strong>?</p>
+        <p ng-if="folderPendingDeleteIsInbox">Are you sure you want to delete all messages in <strong>Inbox</strong> (messages without a folder)?</p>
+        <p ng-if="!folderPendingDeleteIsInbox">Are you sure you want to delete all messages in folder <strong>{{ folderPendingDelete }}</strong>?</p>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="clearPendingFolderDelete()">Cancel</button>
-        <button type="button" class="btn btn-danger" ng-click="deleteFolderConfirm()">Delete folder messages</button>
+        <button type="button" class="btn btn-danger" ng-click="deleteFolderConfirm()">{{ folderPendingDeleteIsInbox ? 'Delete inbox messages' : 'Delete folder messages' }}</button>
       </div>
     </div>
   </div>

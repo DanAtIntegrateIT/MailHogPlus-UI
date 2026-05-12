@@ -478,6 +478,34 @@ select:focus {
   text-decoration: none;
 }
 
+.nav-pills > li.inbox-link > a {
+  position: relative;
+  padding-right: 44px;
+}
+
+.nav-pills > li.inbox-link > a .folder-delete {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  padding: 2px 0;
+  color: var(--text-soft);
+  line-height: 1.4;
+  opacity: 0;
+}
+
+.nav-pills > li.inbox-link > a:hover .folder-delete,
+.nav-pills > li.inbox-link > a:focus .folder-delete {
+  opacity: 1;
+}
+
+.nav-pills > li.inbox-link > a .folder-delete:hover,
+.nav-pills > li.inbox-link > a .folder-delete:focus {
+  color: var(--red);
+  text-decoration: none;
+}
+
 .has-event-source {
   color: var(--green) !important;
 }
@@ -578,6 +606,16 @@ select:focus {
   background: #fff7df;
   border-color: #f2d377;
   color: #8a5a00;
+}
+
+.sort-order-select {
+  display: inline-block;
+  width: auto;
+  min-width: 130px;
+  height: 34px;
+  margin-left: 8px;
+  padding: 5px 28px 5px 10px;
+  font-size: 12px;
 }
 
 .message-count {
@@ -1277,26 +1315,19 @@ select:focus {
   font-weight: 500;
 }
 
-.settings-connection-row {
-  margin-top: 12px;
-}
-
-.settings-connection-grid {
+.settings-connection-fields {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 12px;
-  margin-left: 0;
-  margin-right: 0;
-}
-
-.settings-connection-grid .settings-col {
-  padding-left: 0;
-  padding-right: 0;
-  width: 100%;
-}
-
-.settings-connection-row.settings-connection-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.settings-connection-fields .settings-field {
+  min-width: 0;
+}
+
+.settings-connection-fields .settings-field label {
+  display: block;
+  margin-top: 0;
 }
 
 .settings-folder-editor {
@@ -1515,6 +1546,11 @@ select:focus {
     justify-content: flex-start;
   }
 
+  .sort-order-select {
+    margin-left: 0;
+    min-width: 0;
+  }
+
   .msglist-message {
     grid-template-columns: 1fr;
     row-gap: 6px;
@@ -1601,8 +1637,7 @@ select:focus {
     grid-column: auto;
   }
 
-  .settings-connection-grid,
-  .settings-connection-row.settings-connection-grid {
+  .settings-connection-fields {
     grid-template-columns: 1fr;
   }
 
