@@ -318,6 +318,10 @@
           </div>
         </div>
       </div>
+
+      <div class="messages-empty" ng-if="!selectedFolder && getVisibleMessages().length === 0">
+        No emails here yet
+      </div>
     </div>
 
     <div class="messages" ng-if="searching">

@@ -761,6 +761,13 @@ select:focus {
   background: var(--surface);
 }
 
+.messages-empty {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .msglist-message {
   position: relative;
   width: 100%;
