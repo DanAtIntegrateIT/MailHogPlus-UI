@@ -60,6 +60,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.restoreMessageIDOnNextRefresh = null;
   $scope.lastSelectedMessageByFolder = {};
   $scope.pendingSavedFolderSelection = null;
+  $scope.pendingSavedTagSelection = null;
   $scope.showFavoritesOnly = false;
   $scope.favoriteStateByMessageID = {};
   $scope.readStateByMessageID = {};
@@ -91,6 +92,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       var savedFolder = localStorage.getItem("mailhogSelectedFolder");
       if(savedFolder !== null) {
         $scope.pendingSavedFolderSelection = savedFolder;
+      }
+      var savedTag = localStorage.getItem("mailhogSelectedTag");
+      if(savedTag !== null) {
+        $scope.pendingSavedTagSelection = savedTag;
       }
       $scope.showFavoritesOnly = localStorage.getItem("mailhogShowFavoritesOnly") === "1";
       var savedSortOrder = localStorage.getItem("mailhogSortOrder");
@@ -130,8 +135,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.configuredOutgoingSMTP = {};
   $scope.configuredOutgoingSMTPNames = [];
   $scope.selectedFolder = "";
+  $scope.selectedTag = "";
+  $scope.tagFilterInput = "";
   $scope.folderPendingDelete = "";
   $scope.folderPendingDeleteIsInbox = false;
+  $scope.lastArrivalFolderKey = null;
   $scope.folders = [];
   $scope.showSettings = false;
   $scope.settingsLoading = false;
@@ -152,6 +160,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.settingsDirty = false;
   $scope.messages = [];
   $scope.searchMessages = [];
+  if($scope.pendingSavedTagSelection !== null) {
+    $scope.selectedTag = ($scope.pendingSavedTagSelection || "").trim();
+    $scope.tagFilterInput = $scope.selectedTag;
+    $scope.pendingSavedTagSelection = null;
+  }
 
   $scope.getFolderFromMessage = function(message) {
     if(!message || !message.Content || !message.Content.Headers) {
@@ -169,6 +182,125 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return "";
   }
 
+  $scope.getTagFromMessage = function(message) {
+    var tags = $scope.getTagsFromMessage(message);
+    if(!tags || tags.length === 0) {
+      return "";
+    }
+    return tags.join(":");
+  }
+
+  $scope.getTagsFromMessage = function(message) {
+    if(!message || !message.Content || !message.Content.Headers) {
+      return [];
+    }
+
+    var tags = [];
+    var seen = {};
+    var addTagCandidate = function(rawValue) {
+      if(!rawValue) {
+        return;
+      }
+      var parts = rawValue.split(":");
+      for(var p = 0; p < parts.length; p++) {
+        var candidate = (parts[p] || "").trim();
+        if(candidate.length === 0) {
+          continue;
+        }
+        var normalized = candidate.toLowerCase();
+        if(seen[normalized]) {
+          continue;
+        }
+        seen[normalized] = true;
+        tags.push(candidate);
+      }
+    };
+
+    for(var key in message.Content.Headers) {
+      if(!key) {
+        continue;
+      }
+      var normalizedKey = key.toLowerCase();
+      if(normalizedKey === "x-mailhogplus-tags" || normalizedKey === "x-mailhogplus-tag") {
+        var values = message.Content.Headers[key];
+        if(values && values.length > 0) {
+          for(var i = 0; i < values.length; i++) {
+            addTagCandidate(values[i]);
+          }
+        }
+      }
+    }
+
+    // Compatibility fallback: older messages can store username as folder
+    // (e.g. "amazon:finance") without an explicit X-MailHogPlus-Tag header.
+    if(tags.length === 0) {
+      var folderValue = $scope.getFolderFromMessage(message);
+      if(folderValue && folderValue.indexOf(":") >= 0) {
+        var folderParts = folderValue.split(":");
+        for(var j = 1; j < folderParts.length; j++) {
+          addTagCandidate(folderParts[j]);
+        }
+      }
+    }
+
+    // Last fallback: for generated test emails where auth headers are absent,
+    // derive tags from body text line SMTP Username: folder:tag1:tag2.
+    if(tags.length === 0) {
+      var bodyCandidates = [];
+      if(message.Content && message.Content.Body) {
+        bodyCandidates.push(message.Content.Body);
+      }
+      try {
+        var plainBody = $scope.getMessagePlain(message);
+        if(plainBody && bodyCandidates.indexOf(plainBody) < 0) {
+          bodyCandidates.push(plainBody);
+        }
+      } catch(e) {
+        // Ignore decoding/parsing failures and keep existing fallbacks.
+      }
+
+      for(var b = 0; b < bodyCandidates.length && tags.length === 0; b++) {
+        var bodyText = bodyCandidates[b] || "";
+        if(bodyText.length === 0) {
+          continue;
+        }
+        var normalizedBody = bodyText.replace(/<[^>]*>/g, " ");
+        var usernameMatch = /smtp\s+username:\s*([^\s<\r\n]+)/i.exec(normalizedBody);
+        if(!usernameMatch || !usernameMatch[1]) {
+          continue;
+        }
+        var username = usernameMatch[1].trim();
+        if(username.indexOf(":") < 0) {
+          continue;
+        }
+        var usernameParts = username.split(":");
+        for(var u = 1; u < usernameParts.length; u++) {
+          addTagCandidate(usernameParts[u]);
+        }
+      }
+    }
+    return tags;
+  }
+
+  $scope.getPreviewTags = function(message) {
+    var tags = $scope.getTagsFromMessage(message) || [];
+    if(tags.length <= 1) {
+      return tags;
+    }
+
+    var nonRagTags = [];
+    var ragTags = [];
+    for(var i = 0; i < tags.length; i++) {
+      var tag = tags[i];
+      if($scope.normalizeTagName(tag) === "rag") {
+        ragTags.push(tag);
+      } else {
+        nonRagTags.push(tag);
+      }
+    }
+    return nonRagTags.concat(ragTags);
+  }
+
   $scope.normalizeFolderName = function(folderName) {
     if(!folderName) {
       return "";
@@ -176,12 +308,21 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return folderName.trim().toLowerCase();
   }
 
+  $scope.normalizeTagName = function(tagName) {
+    if(!tagName) {
+      return "";
+    }
+    return tagName.trim().toLowerCase();
+  }
+
   $scope.getFolderSelectionKey = function(folderName) {
     var normalizedFolder = $scope.normalizeFolderName(folderName);
+    var normalizedTag = $scope.normalizeTagName($scope.selectedTag);
+    var tagKey = normalizedTag.length > 0 ? ("|tag:" + normalizedTag) : "";
     if(normalizedFolder.length === 0) {
-      return "inbox";
+      return "inbox" + tagKey;
     }
-    return "folder:" + normalizedFolder;
+    return "folder:" + normalizedFolder + tagKey;
   }
 
   $scope.rememberSelectedMessageForCurrentFolder = function(messageID) {
@@ -216,11 +357,25 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.messageMatchesSelectedFolder = function(message) {
     var folder = $scope.normalizeFolderName($scope.getFolderFromMessage(message));
+    var tags = $scope.getTagsFromMessage(message);
     var selectedFolder = $scope.normalizeFolderName($scope.selectedFolder);
+    var selectedTag = $scope.normalizeTagName($scope.selectedTag);
     if(selectedFolder.length > 0) {
-      return folder === selectedFolder;
+      if(folder !== selectedFolder) {
+        return false;
+      }
+    } else if(folder.length !== 0) {
+      return false;
     }
-    return folder.length === 0;
+    if(selectedTag.length > 0) {
+      for(var i = 0; i < tags.length; i++) {
+        if($scope.normalizeTagName(tags[i]) === selectedTag) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return true;
   }
 
   $scope.sortFolders = function() {
@@ -294,6 +449,39 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.sortFolders();
   }
 
+  $scope.markLastArrivalFolder = function(folderName) {
+    $scope.lastArrivalFolderKey = $scope.normalizeFolderName(folderName);
+  }
+
+  $scope.isLastArrivalInbox = function() {
+    return $scope.lastArrivalFolderKey !== null && $scope.lastArrivalFolderKey.length === 0;
+  }
+
+  $scope.isLastArrivalFolder = function(folderName) {
+    var normalizedFolderName = $scope.normalizeFolderName(folderName);
+    if(normalizedFolderName.length === 0) {
+      return false;
+    }
+    return $scope.lastArrivalFolderKey !== null && normalizedFolderName === $scope.lastArrivalFolderKey;
+  }
+
+  $scope.clearLastArrivalIndicatorForFolder = function(folderName) {
+    var normalizedFolderName = $scope.normalizeFolderName(folderName);
+    if($scope.lastArrivalFolderKey === null) {
+      return;
+    }
+    if($scope.lastArrivalFolderKey === normalizedFolderName) {
+      $scope.lastArrivalFolderKey = null;
+    }
+  }
+
+  $scope.clearLastArrivalIndicatorForMessage = function(message) {
+    if(!message) {
+      return;
+    }
+    $scope.clearLastArrivalIndicatorForFolder($scope.getFolderFromMessage(message));
+  }
+
   $scope.refreshFolders = function() {
     $http.get($scope.host + 'api/v2/folders').success(function(data) {
       $scope.folders = data.items || [];
@@ -331,6 +519,32 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     localStorage.setItem("mailhogSelectedFolder", (folderName || "").trim());
+  }
+
+  $scope.setSavedTagPreference = function(tagName) {
+    if(typeof(Storage) === "undefined") {
+      return;
+    }
+    localStorage.setItem("mailhogSelectedTag", (tagName || "").trim());
+  }
+
+  $scope.applyTagFilter = function(tagName) {
+    var newTag = (tagName || "").trim();
+    if($scope.selectedTag === newTag) {
+      return;
+    }
+    $scope.queueFolderSelectionRestore($scope.selectedFolder || "");
+    $scope.selectedTag = newTag;
+    $scope.tagFilterInput = newTag;
+    $scope.startIndex = 0;
+    $scope.startMessages = 0;
+    $scope.startSearchMessages = 0;
+    $scope.setSavedTagPreference(newTag);
+    $scope.refresh();
+  }
+
+  $scope.clearTagFilter = function() {
+    $scope.applyTagFilter("");
   }
 
   $scope.persistFavoriteState = function() {
@@ -603,7 +817,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if(!message || !message.ID) {
       return;
     }
-    $scope.setMessageReadStateByID(message.ID, !$scope.isMessageRead(message));
+    var willBeRead = !$scope.isMessageRead(message);
+    $scope.setMessageReadStateByID(message.ID, willBeRead);
+    if(willBeRead) {
+      $scope.clearLastArrivalIndicatorForMessage(message);
+    }
   }
 
   $scope.getCurrentMessageCollection = function() {
@@ -732,6 +950,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.selectedMessageID = null;
     $scope.queueFolderSelectionRestore("");
     $scope.selectedFolder = "";
+    $scope.clearLastArrivalIndicatorForFolder("");
     $scope.startIndex = 0;
     $scope.startMessages = 0;
     $scope.searching = false;
@@ -746,6 +965,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.selectedMessageID = null;
     $scope.queueFolderSelectionRestore(folderName || "");
     $scope.selectedFolder = folderName || "";
+    $scope.clearLastArrivalIndicatorForFolder($scope.selectedFolder);
     $scope.startIndex = 0;
     $scope.startMessages = 0;
     $scope.searching = false;
@@ -917,7 +1137,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       mechanism: "NONE",
       username: "",
       password: "",
-      email: ""
+      email: "",
+      testing: false,
+      testStatus: "",
+      testMessage: "",
+      testError: ""
     };
   }
 
@@ -1059,7 +1283,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     var sourceServers = $scope.sanitizeOutgoingSMTPServers(rawServers);
     var copy = [];
     for(var i = 0; i < sourceServers.length; i++) {
-      copy.push(angular.extend({}, sourceServers[i]));
+      copy.push(angular.extend($scope.newOutgoingSMTPServer(), sourceServers[i]));
     }
     return copy;
   }
@@ -1122,6 +1346,83 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     $scope.settingsForm.outgoingSMTP.splice(index, 1);
+  }
+
+  $scope.clearOutgoingSMTPTestResult = function(server) {
+    if(!server) {
+      return;
+    }
+    server.testing = false;
+    server.testStatus = "";
+    server.testMessage = "";
+    server.testError = "";
+  }
+
+  $scope.canTestOutgoingSMTPServer = function(server) {
+    if(!server) {
+      return false;
+    }
+    var normalized = $scope.normalizeOutgoingSMTPServer(server);
+    if(normalized.host.length === 0 || normalized.port.length === 0) {
+      return false;
+    }
+    if(normalized.mechanism !== "NONE" && normalized.username.length === 0) {
+      return false;
+    }
+    return true;
+  }
+
+  $scope.outgoingSMTPTestPayload = function(server) {
+    var normalized = $scope.normalizeOutgoingSMTPServer(server);
+    return {
+      Name: normalized.name,
+      Host: normalized.host,
+      Port: normalized.port,
+      Username: normalized.mechanism === "NONE" ? "" : normalized.username,
+      Password: normalized.mechanism === "NONE" ? "" : normalized.password,
+      Mechanism: normalized.mechanism
+    };
+  }
+
+  $scope.extractAPIErrorMessage = function(err, fallbackMessage) {
+    if(typeof err === "string" && err.length > 0) {
+      return err;
+    }
+    if(err && typeof err.error === "string" && err.error.length > 0) {
+      return err.error;
+    }
+    if(err && typeof err.message === "string" && err.message.length > 0) {
+      return err.message;
+    }
+    return fallbackMessage;
+  }
+
+  $scope.testOutgoingSMTPServer = function(server) {
+    if(!server || server.testing || !$scope.canTestOutgoingSMTPServer(server)) {
+      return;
+    }
+
+    server.testing = true;
+    server.testStatus = "testing";
+    server.testMessage = "Testing SMTP connection...";
+    server.testError = "";
+
+    $http({
+      method: 'POST',
+      url: $scope.host + 'api/v2/outgoing-smtp/test',
+      data: $scope.outgoingSMTPTestPayload(server),
+      timeout: 20000
+    }).success(function(data) {
+      server.testing = false;
+      server.testStatus = "success";
+      server.testMessage = (data && data.message) ? data.message : "SMTP server test succeeded.";
+      server.testError = "";
+    }).error(function(err, status) {
+      server.testing = false;
+      server.testStatus = "error";
+      server.testMessage = "SMTP server test failed.";
+      server.testError = status === -1 ? "SMTP server test timed out." : $scope.extractAPIErrorMessage(err, "Unable to complete SMTP server test.");
+    });
   }
 
   $scope.getSettingsSnapshot = function() {
@@ -1346,6 +1647,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.$apply(function() {
         var message = JSON.parse(e.data);
         var messageFolder = $scope.getFolderFromMessage(message);
+        $scope.markLastArrivalFolder(messageFolder);
         $scope.bumpFolderCount(messageFolder);
         if(typeof(Notification) !== "undefined") {
           $scope.createNotification(message);
@@ -1428,11 +1730,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if(tabContent.length === 0) {
       return;
     }
-    var available = preview.innerHeight() - tabContent.position().top - 2;
-    if(available > 120) {
-      tabContent.height(available);
-      tabContent.find('.tab-pane').height(available);
-    }
+    tabContent.css('height', '');
+    tabContent.find('.tab-pane').css('height', '');
   }
 
   $scope.getHeaderValue = function(message, headerName) {
@@ -1557,6 +1856,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
       url += "&folder=" + encodeURIComponent($scope.selectedFolder);
     }
+    if($scope.selectedTag && $scope.selectedTag.length > 0) {
+      url += "&tag=" + encodeURIComponent($scope.selectedTag);
+    }
     url += "&order=" + encodeURIComponent($scope.sortOrder);
     $http.get(url).success(function(data) {
       $scope.messages = data.items || [];
@@ -1671,6 +1973,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     url += "&order=" + encodeURIComponent($scope.sortOrder);
     if($scope.selectedFolder && $scope.selectedFolder.length > 0) {
       url += "&folder=" + encodeURIComponent($scope.selectedFolder);
+    }
+    if($scope.selectedTag && $scope.selectedTag.length > 0) {
+      url += "&tag=" + encodeURIComponent($scope.selectedTag);
     }
     $http.get(url).success(function(data) {
       $scope.searchMessages = data.items;
@@ -1794,6 +2099,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showSettings = false;
     $scope.selectedMessageID = message.ID;
     $scope.setMessageReadStateByID(message.ID, true);
+    $scope.clearLastArrivalIndicatorForMessage(message);
     $scope.rememberSelectedMessageForCurrentFolder(message.ID);
     $timeout(function(){
       $scope.resizePreview();
@@ -1988,6 +2294,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     var e = $scope.startEvent(eventName, eventLabel, "glyphicon-trash");
     var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(targetFolder);
     $http.delete(url).success(function() {
+      if(!isInboxTarget && $scope.lastArrivalFolderKey === $scope.normalizeFolderName(targetFolder)) {
+        $scope.lastArrivalFolderKey = null;
+      }
       delete $scope.lastSelectedMessageByFolder[$scope.getFolderSelectionKey(targetFolder)];
       if($scope.normalizeFolderName($scope.selectedFolder) === $scope.normalizeFolderName(targetFolder)) {
         $scope.selectedFolder = "";
@@ -2107,6 +2416,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   	$('#confirm-delete-all').modal('hide');
     var e = $scope.startEvent("Deleting all messages", null, "glyphicon-remove-circle");
   	$http.delete($scope.host + 'api/v2/messages').success(function() {
+      $scope.lastArrivalFolderKey = null;
       $scope.lastSelectedMessageByFolder = {};
       $scope.restoreMessageIDOnNextRefresh = null;
       $scope.favoriteStateByMessageID = {};

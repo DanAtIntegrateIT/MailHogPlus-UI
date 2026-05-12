@@ -600,6 +600,22 @@ select:focus {
   color: var(--text-soft);
 }
 
+.nav-pills > li > a .folder-last-arrival-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+  background: var(--blue);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.18);
+}
+
+.nav-pills > li.active > a .folder-last-arrival-indicator {
+  background: var(--blue-dark);
+  box-shadow: 0 0 0 2px rgba(23, 78, 166, 0.22);
+}
+
 .nav-pills > li > a:hover,
 .nav-pills > li > a:focus {
   background: var(--surface-hover);
@@ -763,9 +779,10 @@ select:focus {
 
 .toolbar .btn {
   min-width: 38px;
-  min-height: 34px;
-  padding: 7px 12px;
+  height: 34px;
+  padding: 6px 12px;
   border-radius: 6px;
+  vertical-align: middle;
 }
 
 .toolbar .btn .glyphicon {
@@ -813,6 +830,17 @@ select:focus {
   margin-left: 8px;
   padding: 5px 28px 5px 10px;
   font-size: 12px;
+  vertical-align: middle;
+}
+
+.tag-filter-input {
+  display: inline-block;
+  width: 140px;
+  height: 34px;
+  margin-left: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  vertical-align: middle;
 }
 
 .message-count {
@@ -822,10 +850,11 @@ select:focus {
 }
 
 .message-count select {
-  height: 30px;
+  height: 34px;
   margin-right: 10px;
-  padding: 4px 8px;
+  padding: 5px 8px;
   background: var(--surface);
+  vertical-align: middle;
 }
 
 .content {
@@ -927,6 +956,8 @@ select:focus {
   margin: 16px 18px 0;
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .messages {
@@ -1077,8 +1108,11 @@ select:focus {
 .mail-preview-pane .preview {
   background: var(--app-bg);
   padding-bottom: 8px;
-  overflow-y: auto;
+  overflow: hidden;
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-empty {
@@ -1132,6 +1166,26 @@ select:focus {
 .haeders table td,
 .headers table td,
 .headers table th {
+  padding: 4px 10px;
+}
+
+.preview-tag-list {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.preview-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid #c8daf8;
+  background: #eef4ff;
+  color: #174ea6;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
   padding: 4px 10px;
 }
 
@@ -1203,12 +1257,17 @@ select:focus {
 }
 
 .preview .tab-content {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-top: 0;
   border-radius: 0 0 8px 8px;
-  min-height: 160px;
+}
+
+.preview .tab-content > .tab-pane {
+  min-height: 100%;
 }
 
 #preview-plain,
@@ -1588,6 +1647,16 @@ select:focus {
   font-size: 13px;
 }
 
+.settings-outgoing-item-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.settings-outgoing-item-actions .btn {
+  white-space: nowrap;
+}
+
 .settings-outgoing-item-header .btn-link {
   color: #b3261e;
   padding: 0;
@@ -1601,6 +1670,43 @@ select:focus {
 
 .settings-outgoing-grid .form-group {
   margin-bottom: 0;
+}
+
+.settings-outgoing-test-result {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  margin-top: 10px;
+  padding: 8px 10px;
+}
+
+.settings-outgoing-test-result.is-testing {
+  background: #eef3ff;
+  border-color: #c8dcff;
+  color: #174ea6;
+}
+
+.settings-outgoing-test-result.is-success {
+  background: #eef7f0;
+  border-color: #c8e6cc;
+  color: #1e6b2a;
+}
+
+.settings-outgoing-test-result.is-error {
+  background: #fff0f0;
+  border-color: #f2c8c8;
+  color: #8b1e1e;
+}
+
+.settings-outgoing-test-message {
+  font-weight: 600;
+}
+
+.settings-outgoing-test-error {
+  font-family: Consolas, "Courier New", monospace;
+  margin-top: 5px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .settings-outgoing-actions {
@@ -1855,6 +1961,11 @@ select:focus {
     min-width: 0;
   }
 
+  .tag-filter-input {
+    margin-left: 8px;
+    width: 120px;
+  }
+
   .msglist-message {
     grid-template-columns: 1fr;
     row-gap: 6px;
@@ -1961,6 +2072,16 @@ select:focus {
 
   .settings-outgoing-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-outgoing-item-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .settings-outgoing-item-actions {
+    justify-content: flex-start;
   }
 
   .settings-outgoing-actions .btn {

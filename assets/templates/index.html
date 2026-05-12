@@ -55,7 +55,7 @@
         <p>Use these SMTP values in your app or mail client to route mail into MailHog+.</p>
         <div class="alert alert-info">
           <strong>Required SMTP settings:</strong> Host, Port, and Username.
-          Username creates the folder, so it can be any value you choose.
+          Username format is <code>folder</code> or <code>folder:tag1:tag2</code>.
         </div>
         <div class="settings-connection-fields">
           <div class="settings-field">
@@ -68,7 +68,7 @@
           </div>
           <div class="settings-field">
             <label for="settings-connect-smtp-username">SMTP username</label>
-            <input id="settings-connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
+            <input id="settings-connect-smtp-username" type="text" class="form-control" readonly value="Any value (folder or folder:tag1:tag2)">
           </div>
           <div class="settings-field">
             <label for="settings-connect-smtp-password">SMTP password</label>
@@ -87,24 +87,29 @@
           <div class="settings-outgoing-item" ng-repeat="server in settingsForm.outgoingSMTP track by $index">
             <div class="settings-outgoing-item-header">
               <strong>Server {{ $index + 1 }}</strong>
-              <button type="button" class="btn btn-link btn-xs" ng-click="removeOutgoingSMTPServer($index)">Remove</button>
+              <div class="settings-outgoing-item-actions">
+                <button type="button" class="btn btn-default btn-xs" ng-click="testOutgoingSMTPServer(server)" ng-disabled="server.testing || !canTestOutgoingSMTPServer(server)">
+                  {{ server.testing ? 'Testing...' : 'Test SMTP server' }}
+                </button>
+                <button type="button" class="btn btn-link btn-xs" ng-click="removeOutgoingSMTPServer($index)">Remove</button>
+              </div>
             </div>
             <div class="settings-outgoing-grid">
               <div class="form-group">
                 <label>Server name</label>
-                <input type="text" class="form-control" ng-model="server.name" placeholder="Primary relay">
+                <input type="text" class="form-control" ng-model="server.name" ng-change="clearOutgoingSMTPTestResult(server)" placeholder="Primary relay">
               </div>
               <div class="form-group">
                 <label>SMTP host</label>
-                <input type="text" class="form-control" ng-model="server.host" placeholder="mail.example.com">
+                <input type="text" class="form-control" ng-model="server.host" ng-change="clearOutgoingSMTPTestResult(server)" placeholder="mail.example.com">
               </div>
               <div class="form-group">
                 <label>SMTP port</label>
-                <input type="text" class="form-control" ng-model="server.port" placeholder="25">
+                <input type="text" class="form-control" ng-model="server.port" ng-change="clearOutgoingSMTPTestResult(server)" placeholder="25">
               </div>
               <div class="form-group">
                 <label>Authentication</label>
-                <select class="form-control" ng-model="server.mechanism">
+                <select class="form-control" ng-model="server.mechanism" ng-change="clearOutgoingSMTPTestResult(server)">
                   <option value="NONE">None</option>
                   <option value="PLAIN">PLAIN</option>
                   <option value="CRAMMD5">CRAM-MD5</option>
@@ -112,16 +117,22 @@
               </div>
               <div class="form-group">
                 <label>Default recipient (optional)</label>
-                <input type="email" class="form-control" ng-model="server.email" placeholder="someone@example.com">
+                <input type="email" class="form-control" ng-model="server.email" ng-change="clearOutgoingSMTPTestResult(server)" placeholder="someone@example.com">
               </div>
               <div class="form-group" ng-if="server.mechanism !== 'NONE'">
                 <label>Username</label>
-                <input type="text" class="form-control" ng-model="server.username" placeholder="smtp-user">
+                <input type="text" class="form-control" ng-model="server.username" ng-change="clearOutgoingSMTPTestResult(server)" placeholder="smtp-user">
               </div>
               <div class="form-group" ng-if="server.mechanism !== 'NONE'">
                 <label>{{ server.mechanism === 'CRAMMD5' ? 'Secret' : 'Password' }}</label>
-                <input type="password" class="form-control" ng-model="server.password">
+                <input type="password" class="form-control" ng-model="server.password" ng-change="clearOutgoingSMTPTestResult(server)">
               </div>
+            </div>
+            <div class="settings-outgoing-test-result"
+                 ng-if="server.testing || server.testStatus === 'success' || server.testStatus === 'error'"
+                 ng-class="{ 'is-testing': server.testing, 'is-success': server.testStatus === 'success', 'is-error': server.testStatus === 'error' }">
+              <div class="settings-outgoing-test-message">{{ server.testMessage }}</div>
+              <div class="settings-outgoing-test-error" ng-if="server.testError">{{ server.testError }}</div>
             </div>
           </div>
         </div>
@@ -263,6 +274,18 @@
         <option value="asc">Oldest first</option>
       </select>
 
+      <input type="text"
+             class="form-control tag-filter-input"
+             ng-model="tagFilterInput"
+             ng-key-enter="applyTagFilter(tagFilterInput)"
+             placeholder="Filter tag">
+      <button class="btn btn-default" ng-click="applyTagFilter(tagFilterInput)" title="Apply tag filter">
+        <i class="glyphicon glyphicon-filter"></i>
+      </button>
+      <button class="btn btn-default" ng-if="selectedTag.length > 0" ng-click="clearTagFilter()" title="Clear tag filter">
+        <i class="glyphicon glyphicon-remove"></i>
+      </button>
+
       <span class="pull-right">
         <span class="message-count" ng-if="(totalMessages || 0) != 0">
           <select ng-model="itemsPerPage" ng-change="showUpdated(itemsPerPage)">
@@ -313,8 +336,23 @@
         <option value="asc">Oldest first</option>
       </select>
 
+      <input type="text"
+             class="form-control tag-filter-input"
+             ng-model="tagFilterInput"
+             ng-key-enter="applyTagFilter(tagFilterInput)"
+             placeholder="Filter tag">
+      <button class="btn btn-default" ng-click="applyTagFilter(tagFilterInput)" title="Apply tag filter">
+        <i class="glyphicon glyphicon-filter"></i>
+      </button>
+      <button class="btn btn-default" ng-if="selectedTag.length > 0" ng-click="clearTagFilter()" title="Clear tag filter">
+        <i class="glyphicon glyphicon-remove"></i>
+      </button>
+
       <div class="spacer"></div>
-      <span>Searching for messages <strong>{{searchKind}}</strong> {{ searchedText }}</span>
+      <span>
+        Searching for messages <strong>{{searchKind}}</strong> {{ searchedText }}
+        <span ng-if="selectedTag.length > 0"> with tag <strong>{{ selectedTag }}</strong></span>
+      </span>
 
       <span class="pull-right">
         <span style="padding-right: 8px">
@@ -372,7 +410,11 @@
         </div>
       </div>
 
-      <div class="messages-empty" ng-if="!selectedFolder && getVisibleMessages().length === 0">
+      <div class="messages-empty" ng-if="selectedTag.length > 0 && getVisibleMessages().length === 0">
+        No results found for this filter.
+      </div>
+
+      <div class="messages-empty" ng-if="selectedTag.length === 0 && !selectedFolder && getVisibleMessages().length === 0">
         No emails here yet
       </div>
     </div>
@@ -414,6 +456,10 @@
             {{ fileSize(message.Raw.Data.length) }}
           </div>
         </div>
+      </div>
+
+      <div class="messages-empty" ng-if="selectedTag.length > 0 && getVisibleMessages().length === 0">
+        No results found for this filter.
       </div>
     </div>
   </div>
@@ -475,6 +521,14 @@
                 <th>To</th>
                 <td>
                   {{ tryDecodeMime((preview.Content.Headers["To"] || []).join(', ') || preview.To[0].Mailbox + "@" + preview.To[0].Domain) }}
+                </td>
+              </tr>
+              <tr ng-if="getTagsFromMessage(preview).length > 0">
+                <th>Tags</th>
+                <td>
+                  <span class="preview-tag-list">
+                    <span class="preview-tag-pill" ng-repeat="tag in getPreviewTags(preview) track by $index">{{ tag }}</span>
+                  </span>
                 </td>
               </tr>
               <tr ng-if="preview.qualityLoading || preview.quality || preview.qualityError">

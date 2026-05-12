@@ -45,13 +45,6 @@
             </div>
           </form>
 
-          <ul class="nav navbar-nav navbar-right">
-            <li>
-              <a target="_blank" href="https://github.com/DanAtIntegrateIT/MailHogPlus">
-                <img src="images/github.png" height="16" alt="GitHub"> GitHub
-              </a>
-            </li>
-          </ul>
         </div>
       </div>
     </nav>
@@ -65,6 +58,9 @@
                 <li class="inbox-link" ng-class="{ active: !selectedFolder }">
                   <a href="#" ng-click="selectInbox(); $event.preventDefault();">
                     <span class="glyphicon glyphicon-inbox"></span>
+                    <span class="folder-last-arrival-indicator"
+                          ng-if="isLastArrivalInbox()"
+                          title="Most recent email arrived here"></span>
                     Inbox
                     <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteInboxMessages($event)" title="Delete inbox messages">
                       <span class="glyphicon glyphicon-trash"></span>
@@ -74,6 +70,9 @@
                 <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
                   <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
                     <span class="glyphicon glyphicon-folder-open folder-icon" ng-class="{ 'folder-icon-default': isDefaultFolder(folder.name) }" title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
+                    <span class="folder-last-arrival-indicator"
+                          ng-if="isLastArrivalFolder(folder.name)"
+                          title="Most recent email arrived here"></span>
                     {{ folder.name }}
                     <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
                       <span class="glyphicon glyphicon-trash"></span>
@@ -132,7 +131,9 @@
             <div class="about-version">
               <strong>Project:</strong> MailHog+<br>
               <strong>Repository:</strong>
-              <a target="_blank" href="https://github.com/DanAtIntegrateIT/MailHogPlus">github.com/DanAtIntegrateIT/MailHogPlus</a>
+              <a target="_blank" href="https://github.com/DanAtIntegrateIT/MailHogPlus">
+                <img src="images/github.png" height="16" alt="GitHub"> GitHub - DanAtIntegrateIT/MailHogPlus
+              </a>
             </div>
           </div>
           <div class="modal-footer">
