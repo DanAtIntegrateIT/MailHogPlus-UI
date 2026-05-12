@@ -140,6 +140,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   };
   $scope.settingsDefaultFolderInput = "";
   $scope.settingsRequiresRestart = false;
+  $scope.settingsLoadedSnapshot = null;
+  $scope.settingsDirty = false;
   $scope.messages = [];
   $scope.searchMessages = [];
 
@@ -845,6 +847,53 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return false;
   }
 
+  $scope.getSettingsSnapshot = function() {
+    var retentionDays = parseInt($scope.settingsForm.retentionDays, 10);
+    if(isNaN(retentionDays) || retentionDays < 0) {
+      retentionDays = 0;
+    }
+    return {
+      retentionDays: retentionDays,
+      storageType: ($scope.settingsForm.storageType || "").toLowerCase(),
+      defaultFolders: $scope.sanitizeDefaultFolders($scope.settingsForm.defaultFolders),
+      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly
+    };
+  }
+
+  $scope.captureSettingsSnapshot = function() {
+    $scope.settingsLoadedSnapshot = angular.toJson($scope.getSettingsSnapshot());
+    $scope.settingsDirty = false;
+  }
+
+  $scope.updateSettingsDirtyState = function() {
+    if(!$scope.settingsLoadedSnapshot) {
+      $scope.settingsDirty = false;
+      return;
+    }
+    var isDirty = angular.toJson($scope.getSettingsSnapshot()) !== $scope.settingsLoadedSnapshot;
+    if(isDirty && $scope.settingsStatus) {
+      $scope.settingsStatus = "";
+    }
+    $scope.settingsDirty = isDirty;
+  }
+
+  $scope.hasSettingsChanges = function() {
+    return !!$scope.settingsDirty;
+  }
+
+  $scope.discardSettingsChanges = function() {
+    if($scope.settingsLoading || $scope.settingsSaving || !$scope.hasSettingsChanges()) {
+      return;
+    }
+    $scope.fetchSettings();
+  }
+
+  $scope.$watch(function() {
+    return angular.toJson($scope.getSettingsSnapshot());
+  }, function() {
+    $scope.updateSettingsDirtyState();
+  });
+
   $scope.setViewMode = function(mode) {
     if(mode !== "columns" && mode !== "stacked") {
       return;
@@ -910,6 +959,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.settingsLoading = true;
     $scope.settingsError = "";
     $scope.settingsStatus = "";
+    $scope.settingsLoadedSnapshot = null;
+    $scope.settingsDirty = false;
     $http.get($scope.host + 'api/v2/settings').success(function(data) {
       $scope.settingsForm.retentionDays = data.retentionDays || 10;
       $scope.settingsForm.storageType = data.storageType || "maildir";
@@ -919,9 +970,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsLoading = false;
+      $scope.captureSettingsSnapshot();
     }).error(function() {
       $scope.settingsLoading = false;
       $scope.settingsError = "Unable to load settings.";
+      $scope.settingsLoadedSnapshot = null;
+      $scope.settingsDirty = false;
     });
   }
 
@@ -939,6 +993,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if(!retentionDays || retentionDays <= 0) {
       $scope.settingsError = "Retention days must be greater than 0.";
       $scope.settingsStatus = "";
+      return;
+    }
+    if(!$scope.hasSettingsChanges()) {
+      $scope.settingsStatus = "No changes to save.";
+      $scope.settingsError = "";
       return;
     }
     var defaultFolders = $scope.sanitizeDefaultFolders($scope.settingsForm.defaultFolders);
@@ -960,6 +1019,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsSaving = false;
+      $scope.captureSettingsSnapshot();
       $scope.settingsStatus = $scope.settingsRequiresRestart ? "Settings saved. Restart required for storage mode change." : "Settings saved.";
       $scope.refresh();
     }).error(function() {

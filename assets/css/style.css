@@ -1110,19 +1110,25 @@ select:focus {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  padding: 22px;
+  padding: 20px 22px 26px;
   background: var(--app-bg);
   min-height: 100%;
 }
 
 .settings-card {
-  max-width: 980px;
+  max-width: 1080px;
   margin: 0 auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow-sm);
   padding: 20px;
+}
+
+.settings-card-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .settings-header h3 {
@@ -1132,12 +1138,73 @@ select:focus {
 }
 
 .settings-header p {
-  margin-bottom: 16px;
+  margin-bottom: 0;
   color: var(--text-muted);
 }
 
-.settings-actions {
-  margin-top: 16px;
+.settings-header-modern {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.settings-header-copy {
+  min-width: 0;
+}
+
+.settings-state-pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.settings-state-pill.is-loading {
+  background: #eef3fd;
+  border-color: #d4e0f7;
+  color: #3f5f90;
+}
+
+.settings-state-pill.is-dirty {
+  background: #fff5de;
+  border-color: #f5d38b;
+  color: #8a5a00;
+}
+
+.settings-state-pill.is-clean {
+  background: #eaf7ee;
+  border-color: #b9e0c3;
+  color: #137333;
+}
+
+.settings-save-hint {
+  margin-bottom: 0;
+}
+
+.settings-loading-panel {
+  background: var(--surface-subtle);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-muted);
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.settings-layout {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.settings-section-general,
+.settings-section-folders,
+.settings-jim-section {
+  grid-column: 1 / -1;
 }
 
 .settings-primary-grid {
@@ -1166,9 +1233,8 @@ select:focus {
 }
 
 .settings-section {
-  margin-top: 22px;
-  padding: 18px 16px 16px;
-  border-top: 1px solid var(--border);
+  margin-top: 0;
+  padding: 16px;
   background: var(--surface-subtle);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1200,7 +1266,7 @@ select:focus {
   letter-spacing: 0;
   margin-bottom: 7px;
   margin-top: 4px;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .settings-section .form-control[readonly] {
@@ -1234,7 +1300,7 @@ select:focus {
 }
 
 .settings-folder-editor {
-  background: var(--surface-subtle);
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 10px;
@@ -1313,6 +1379,37 @@ select:focus {
   min-width: 84px;
 }
 
+.settings-toggle-row {
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.settings-toggle-control {
+  align-items: center;
+  color: var(--text);
+  display: inline-flex;
+  font-size: 14px;
+  font-weight: 600;
+  gap: 8px;
+  margin: 0;
+  text-transform: none;
+}
+
+.settings-toggle-control input[type="checkbox"] {
+  margin: 0;
+}
+
+.settings-toggle-title {
+  line-height: 1.2;
+}
+
+.settings-help-text {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
 .settings-jim-section .settings-jim-actions {
   margin-bottom: 10px;
 }
@@ -1325,6 +1422,36 @@ select:focus {
   margin: 10px 0 0;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.settings-sticky-actions {
+  align-items: center;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, #ffffff 55%);
+  border-top: 1px solid var(--border);
+  bottom: 0;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding-top: 12px;
+  position: sticky;
+  z-index: 2;
+}
+
+.settings-sticky-text {
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.settings-sticky-text.is-dirty {
+  color: #8a5a00;
+}
+
+.settings-sticky-buttons {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
 }
 
 @media (max-width: 767px) {
@@ -1429,6 +1556,34 @@ select:focus {
     padding-top: 0;
   }
 
+  .settings-page {
+    padding: 12px;
+  }
+
+  .settings-card {
+    padding: 14px;
+  }
+
+  .settings-header-modern {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .settings-state-pill {
+    align-self: flex-start;
+  }
+
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-section-general,
+  .settings-section-folders,
+  .settings-jim-section {
+    grid-column: auto;
+  }
+
   .settings-folder-input-row {
     flex-direction: column;
     align-items: stretch;
@@ -1449,6 +1604,21 @@ select:focus {
   .settings-connection-grid,
   .settings-connection-row.settings-connection-grid {
     grid-template-columns: 1fr;
+  }
+
+  .settings-sticky-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .settings-sticky-buttons {
+    display: flex;
+    width: 100%;
+  }
+
+  .settings-sticky-buttons .btn {
+    flex: 1 1 0;
   }
 
   .quality-overview {

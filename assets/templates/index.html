@@ -1,159 +1,182 @@
 <div class="settings-page" ng-if="showSettings">
-  <div class="settings-card">
-    <div class="settings-header">
-      <h3>Server settings</h3>
-      <p>Configure message retention for automatic cleanup.</p>
+  <form class="settings-card settings-card-modern" role="form" ng-submit="saveSettings()">
+    <div class="settings-header settings-header-modern">
+      <div class="settings-header-copy">
+        <h3>Server settings</h3>
+        <p>Configure storage, folder policy, and SMTP behavior.</p>
+      </div>
+      <div class="settings-state-pill"
+           ng-class="{ 'is-loading': settingsLoading, 'is-dirty': !settingsLoading && hasSettingsChanges(), 'is-clean': !settingsLoading && !hasSettingsChanges() }">
+        {{ settingsLoading ? 'Loading settings' : (hasSettingsChanges() ? 'Unsaved changes' : 'All changes saved') }}
+      </div>
     </div>
 
     <div class="alert alert-danger" ng-if="settingsError">{{ settingsError }}</div>
     <div class="alert alert-success" ng-if="settingsStatus">{{ settingsStatus }}</div>
-    <div class="alert alert-info" ng-if="settingsLoading">Loading settings...</div>
     <div class="alert alert-warning" ng-if="settingsForm.storageType === 'memory' && !settingsLoading">
       Memory storage is volatile: messages are lost after system restart, crash, or server reboot.
     </div>
     <div class="alert alert-warning" ng-if="settingsRequiresRestart && !settingsLoading">
       Storage mode changes apply after server restart.
     </div>
+    <div class="alert alert-info settings-save-hint" ng-if="!settingsLoading">
+      Changes on this page are staged until you click <strong>Save changes</strong>.
+    </div>
 
-    <form role="form" ng-if="!settingsLoading" ng-submit="saveSettings()">
-      <div class="settings-primary-grid">
-        <div class="form-group">
-          <label for="settings-retention-days">Message retention (days)</label>
-          <input id="settings-retention-days" type="number" min="1" class="form-control" ng-model="settingsForm.retentionDays">
-        </div>
-        <div class="form-group">
-          <label for="settings-storage-type">Storage backend</label>
-          <select id="settings-storage-type" class="form-control" ng-model="settingsForm.storageType">
-            <option value="maildir">Maildir (persistent)</option>
-            <option value="memory">Memory only (non-persistent)</option>
-          </select>
-        </div>
-        <div class="form-group settings-primary-span-full">
-          <label for="settings-maildir-path">Maildir path</label>
-          <input id="settings-maildir-path" type="text" class="form-control" ng-model="settingsForm.maildirPath" readonly>
+    <div class="settings-loading-panel" ng-if="settingsLoading">
+      Loading settings...
+    </div>
+
+    <div class="settings-layout" ng-if="!settingsLoading">
+      <div class="settings-section settings-section-general">
+        <h4>General</h4>
+        <p>Control retention and storage backend for message persistence.</p>
+        <div class="settings-primary-grid">
+          <div class="form-group">
+            <label for="settings-retention-days">Message retention (days)</label>
+            <input id="settings-retention-days" type="number" min="1" class="form-control" ng-model="settingsForm.retentionDays">
+          </div>
+          <div class="form-group">
+            <label for="settings-storage-type">Storage backend</label>
+            <select id="settings-storage-type" class="form-control" ng-model="settingsForm.storageType">
+              <option value="maildir">Maildir (persistent)</option>
+              <option value="memory">Memory only (non-persistent)</option>
+            </select>
+          </div>
+          <div class="form-group settings-primary-span-full">
+            <label for="settings-maildir-path">Maildir path</label>
+            <input id="settings-maildir-path" type="text" class="form-control" ng-model="settingsForm.maildirPath" readonly>
+          </div>
         </div>
       </div>
-      <div class="settings-actions">
-        <button class="btn btn-primary" type="submit" ng-disabled="settingsSaving">
-          {{ settingsSaving ? 'Saving...' : 'Save settings' }}
+
+      <div class="settings-section settings-section-connection">
+        <h4>Server connection</h4>
+        <p>Use these SMTP values in your app or mail client to route mail into MailHog+.</p>
+        <div class="alert alert-info">
+          <strong>Required SMTP settings:</strong> Host, Port, and Username.
+          Username creates the folder, so it can be any value you choose.
+        </div>
+        <div class="row settings-connection-grid">
+          <div class="col-sm-8 settings-col">
+            <label for="settings-connect-api-host">Server host</label>
+            <input id="settings-connect-api-host" type="text" class="form-control" readonly ng-value="connectionSettings.apiHost">
+          </div>
+          <div class="col-sm-4 settings-col">
+            <label for="settings-connect-smtp-port">SMTP port</label>
+            <input id="settings-connect-smtp-port" type="text" class="form-control" readonly ng-value="connectionSettings.smtpPort">
+          </div>
+        </div>
+        <div class="row settings-connection-row settings-connection-grid">
+          <div class="col-sm-6 settings-col">
+            <label for="settings-connect-smtp-username">SMTP username</label>
+            <input id="settings-connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
+          </div>
+          <div class="col-sm-6 settings-col">
+            <label for="settings-connect-smtp-password">SMTP password</label>
+            <input id="settings-connect-smtp-password" type="text" class="form-control" readonly value="Optional / any value">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section settings-section-folders">
+        <h4>Default inbox folders</h4>
+        <p>Pre-create folder names for inbox navigation. They appear even before new mail arrives.</p>
+        <div class="settings-folder-editor">
+          <div class="settings-folder-list">
+            <span class="settings-folder-pill" ng-repeat="folder in settingsForm.defaultFolders track by $index">
+              <span class="settings-folder-pill-label">{{ folder }}</span>
+              <button type="button" class="settings-folder-pill-remove" ng-click="removeDefaultFolder(folder)" title="Remove folder">
+                &times;
+              </button>
+            </span>
+            <span class="settings-folder-empty" ng-if="!settingsForm.defaultFolders || settingsForm.defaultFolders.length === 0">
+              No default folders configured.
+            </span>
+          </div>
+          <div class="settings-folder-input-row">
+            <input type="text"
+                   id="settings-default-folder-input"
+                   class="form-control"
+                   ng-model="settingsDefaultFolderInput"
+                   ng-key-enter="addDefaultFolder(settingsDefaultFolderInput)"
+                   placeholder="Add folder name">
+            <button type="button" class="btn btn-default" ng-click="addDefaultFolder(settingsDefaultFolderInput)">Add</button>
+          </div>
+        </div>
+
+        <div class="settings-toggle-row">
+          <label class="settings-toggle-control" for="settings-force-default-inbox-only">
+            <input id="settings-force-default-inbox-only" type="checkbox" ng-model="settingsForm.forceDefaultInboxOnly">
+            <span class="settings-toggle-title">Force default inbox only</span>
+          </label>
+          <p class="help-block settings-help-text">
+            Only listed default folders are accepted as SMTP usernames. Any other username is rejected with <code>unknown user folder</code>.
+          </p>
+        </div>
+      </div>
+
+      <div class="settings-section settings-jim-section">
+        <h4>Jim chaos monkey</h4>
+        <p>Simulate unstable SMTP behavior for resilience and failure-path testing.</p>
+        <div class="settings-jim-actions" ng-if="jim">
+          <button type="button" class="btn btn-danger btn-sm" ng-click="disableJim()">Disable Jim</button>
+        </div>
+        <div class="settings-jim-actions" ng-if="!jim">
+          <button type="button" class="btn btn-default btn-sm" ng-click="enableJim()">Enable Jim</button>
+        </div>
+        <div ng-if="jim" class="jim-config">
+          <div class="jim-config-item">
+            <strong>Accept chance</strong>
+            <span>{{ jim.AcceptChance * 100 }}%</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Disconnect chance</strong>
+            <span>{{ jim.DisconnectChance * 100 }}%</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Link speed affect chance</strong>
+            <span>{{ jim.LinkSpeedAffect * 100}}%</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Link speed minimum</strong>
+            <span>{{ jim.LinkSpeedMin }}kbps</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Link speed maximum</strong>
+            <span>{{ jim.LinkSpeedMax }}kbps</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Reject sender chance</strong>
+            <span>{{ jim.RejectSenderChance * 100 }}%</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Reject recipient chance</strong>
+            <span>{{ jim.RejectRecipientChance * 100 }}%</span>
+          </div>
+          <div class="jim-config-item">
+            <strong>Reject auth chance</strong>
+            <span>{{ jim.RejectAuthChance * 100 }}%</span>
+          </div>
+        </div>
+        <p class="jim-doc-link">
+          <a href="https://github.com/DanAtIntegrateIT/MailHogPlus/blob/master/docs/JIM.md" target="_blank">Jim documentation on GitHub</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="settings-sticky-actions" ng-if="!settingsLoading">
+      <div class="settings-sticky-text" ng-class="{ 'is-dirty': hasSettingsChanges() }">
+        {{ hasSettingsChanges() ? 'You have unsaved changes.' : 'No pending changes.' }}
+      </div>
+      <div class="settings-sticky-buttons">
+        <button type="button" class="btn btn-default" ng-click="discardSettingsChanges()" ng-disabled="settingsSaving || !hasSettingsChanges()">Discard</button>
+        <button class="btn btn-primary" type="submit" ng-disabled="settingsSaving || !hasSettingsChanges()">
+          {{ settingsSaving ? 'Saving...' : 'Save changes' }}
         </button>
       </div>
-    </form>
-
-    <div class="settings-section" ng-if="!settingsLoading">
-      <h4>Server connection</h4>
-      <p>Use these SMTP values in your app or mail client to route mail into MailHog+.</p>
-      <div class="alert alert-info">
-        <strong>Required SMTP settings:</strong> Host, Port, and Username.
-        Username creates the folder, so it can be any value you choose.
-      </div>
-      <div class="row settings-connection-grid">
-        <div class="col-sm-8 settings-col">
-          <label for="settings-connect-api-host">Server host</label>
-          <input id="settings-connect-api-host" type="text" class="form-control" readonly ng-value="connectionSettings.apiHost">
-        </div>
-        <div class="col-sm-4 settings-col">
-          <label for="settings-connect-smtp-port">SMTP port</label>
-          <input id="settings-connect-smtp-port" type="text" class="form-control" readonly ng-value="connectionSettings.smtpPort">
-        </div>
-      </div>
-      <div class="row settings-connection-row settings-connection-grid">
-        <div class="col-sm-6 settings-col">
-          <label for="settings-connect-smtp-username">SMTP username</label>
-          <input id="settings-connect-smtp-username" type="text" class="form-control" readonly value="Any value (used as folder name)">
-        </div>
-        <div class="col-sm-6 settings-col">
-          <label for="settings-connect-smtp-password">SMTP password</label>
-          <input id="settings-connect-smtp-password" type="text" class="form-control" readonly value="Optional / any value">
-        </div>
-      </div>
     </div>
-
-    <div class="settings-section" ng-if="!settingsLoading">
-      <h4>Default inbox folders</h4>
-      <p>Pre-create folder names for your inbox navigation. They will appear even before new mail arrives.</p>
-      <div class="settings-folder-editor">
-        <div class="settings-folder-list">
-          <span class="settings-folder-pill" ng-repeat="folder in settingsForm.defaultFolders track by $index">
-            <span class="settings-folder-pill-label">{{ folder }}</span>
-            <button type="button" class="settings-folder-pill-remove" ng-click="removeDefaultFolder(folder)" title="Remove folder">
-              &times;
-            </button>
-          </span>
-          <span class="settings-folder-empty" ng-if="!settingsForm.defaultFolders || settingsForm.defaultFolders.length === 0">
-            No default folders configured.
-          </span>
-        </div>
-        <div class="settings-folder-input-row">
-          <input type="text"
-                 id="settings-default-folder-input"
-                 class="form-control"
-                 ng-model="settingsDefaultFolderInput"
-                 ng-key-enter="addDefaultFolder(settingsDefaultFolderInput)"
-                 placeholder="Add folder name">
-          <button type="button" class="btn btn-default" ng-click="addDefaultFolder(settingsDefaultFolderInput)">Add</button>
-        </div>
-      </div>
-      <hr>
-      <div class="checkbox">
-        <label for="settings-force-default-inbox-only">
-          <input id="settings-force-default-inbox-only" type="checkbox" ng-model="settingsForm.forceDefaultInboxOnly">
-          Force default inbox only
-        </label>
-      </div>
-      <p class="help-block settings-help-text">
-        Only listed default folders are accepted as SMTP usernames. Any other username is rejected with <code>unknown user folder</code>.
-      </p>
-    </div>
-
-    <div class="settings-section settings-jim-section" ng-if="!settingsLoading">
-      <h4>Jim chaos monkey</h4>
-      <p>Simulate unstable SMTP behavior for resilience and failure-path testing.</p>
-      <div class="settings-jim-actions" ng-if="jim">
-        <button type="button" class="btn btn-danger btn-sm" ng-click="disableJim()">Disable Jim</button>
-      </div>
-      <div class="settings-jim-actions" ng-if="!jim">
-        <button type="button" class="btn btn-default btn-sm" ng-click="enableJim()">Enable Jim</button>
-      </div>
-      <div ng-if="jim" class="jim-config">
-        <div class="jim-config-item">
-          <strong>Accept chance</strong>
-          <span>{{ jim.AcceptChance * 100 }}%</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Disconnect chance</strong>
-          <span>{{ jim.DisconnectChance * 100 }}%</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Link speed affect chance</strong>
-          <span>{{ jim.LinkSpeedAffect * 100}}%</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Link speed minimum</strong>
-          <span>{{ jim.LinkSpeedMin }}kbps</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Link speed maximum</strong>
-          <span>{{ jim.LinkSpeedMax }}kbps</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Reject sender chance</strong>
-          <span>{{ jim.RejectSenderChance * 100 }}%</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Reject recipient chance</strong>
-          <span>{{ jim.RejectRecipientChance * 100 }}%</span>
-        </div>
-        <div class="jim-config-item">
-          <strong>Reject auth chance</strong>
-          <span>{{ jim.RejectAuthChance * 100 }}%</span>
-        </div>
-      </div>
-      <p class="jim-doc-link">
-        <a href="https://github.com/DanAtIntegrateIT/MailHogPlus/blob/master/docs/JIM.md" target="_blank">Jim documentation on GitHub</a>
-      </p>
-    </div>
-  </div>
+  </form>
 </div>
 
 <div class="mail-workspace" id="mail-workspace" ng-if="!showSettings" ng-class="viewMode === 'columns' ? 'workspace-columns' : 'workspace-stacked'">
