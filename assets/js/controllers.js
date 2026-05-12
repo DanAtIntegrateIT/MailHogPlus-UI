@@ -34,7 +34,7 @@ mailhogApp.directive('ngKeyEnter', function () {
   };
 });
 
-mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
+mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $document) {
   $scope.host = apiHost;
 
   $scope.cache = {};
@@ -51,12 +51,34 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   $scope.itemsPerPage = 50
   $scope.startIndex = 0
 
+  $scope.viewMode = "columns";
+  $scope.columnsListWidth = 46;
+  $scope.stackedListHeight = 48;
+  $scope.selectedMessageID = null;
+  $scope.autoSelectFirstOnNextRefresh = false;
+
+  function parseNumber(v, fallback) {
+    var n = parseFloat(v);
+    return isNaN(n) ? fallback : n;
+  }
+  function clamp(v, min, max) {
+    if(v < min) { return min; }
+    if(v > max) { return max; }
+    return v;
+  }
+
   if(typeof(Storage) !== "undefined") {
       $scope.itemsPerPage = parseInt(localStorage.getItem("itemsPerPage"), 10)
       if(!$scope.itemsPerPage) {
         $scope.itemsPerPage = 50;
         localStorage.setItem("itemsPerPage", 50)
       }
+      var savedMode = localStorage.getItem("mailhogViewMode");
+      if(savedMode === "columns" || savedMode === "stacked") {
+        $scope.viewMode = savedMode;
+      }
+      $scope.columnsListWidth = clamp(parseNumber(localStorage.getItem("mailhogViewColumnsWidth"), 46), 28, 72);
+      $scope.stackedListHeight = clamp(parseNumber(localStorage.getItem("mailhogViewStackedHeight"), 48), 25, 75);
   }
 
   $scope.startMessages = 0
@@ -85,6 +107,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     maildirPath: ""
   };
   $scope.settingsRequiresRestart = false;
+  $scope.messages = [];
+  $scope.searchMessages = [];
 
   $scope.getFolderFromMessage = function(message) {
     if(!message || !message.Content || !message.Content.Headers) {
@@ -140,6 +164,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   $scope.selectInbox = function() {
     $scope.showSettings = false;
     $scope.preview = null;
+    $scope.previewAllHeaders = false;
+    $scope.selectedMessageID = null;
+    $scope.autoSelectFirstOnNextRefresh = true;
     $scope.selectedFolder = "";
     $scope.startIndex = 0;
     $scope.startMessages = 0;
@@ -150,6 +177,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   $scope.selectFolder = function(folderName) {
     $scope.showSettings = false;
     $scope.preview = null;
+    $scope.previewAllHeaders = false;
+    $scope.selectedMessageID = null;
+    $scope.autoSelectFirstOnNextRefresh = true;
     $scope.selectedFolder = folderName || "";
     $scope.startIndex = 0;
     $scope.startMessages = 0;
@@ -225,6 +255,67 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
     $('#connect-server-modal').modal('show');
   }
 
+  $scope.setViewMode = function(mode) {
+    if(mode !== "columns" && mode !== "stacked") {
+      return;
+    }
+    $scope.viewMode = mode;
+    if(typeof(Storage) !== "undefined") {
+      localStorage.setItem("mailhogViewMode", mode);
+    }
+    $timeout(function() {
+      $scope.resizePreview();
+    }, 0);
+  }
+
+  $scope.startPaneResize = function(event) {
+    event.preventDefault();
+    var workspace = document.getElementById('mail-workspace');
+    if(!workspace) {
+      return;
+    }
+
+    var rect = workspace.getBoundingClientRect();
+    var startX = event.pageX;
+    var startY = event.pageY;
+    var startColumns = $scope.columnsListWidth;
+    var startStacked = $scope.stackedListHeight;
+    var isColumns = $scope.viewMode === "columns";
+
+    var onMove = function(e) {
+      if(isColumns) {
+        var deltaX = e.pageX - startX;
+        var nextWidth = ((startColumns / 100.0 * rect.width) + deltaX) / rect.width * 100.0;
+        nextWidth = clamp(nextWidth, 28, 72);
+        $scope.$applyAsync(function() {
+          $scope.columnsListWidth = nextWidth;
+        });
+      } else {
+        var deltaY = e.pageY - startY;
+        var nextHeight = ((startStacked / 100.0 * rect.height) + deltaY) / rect.height * 100.0;
+        nextHeight = clamp(nextHeight, 25, 75);
+        $scope.$applyAsync(function() {
+          $scope.stackedListHeight = nextHeight;
+        });
+      }
+    };
+
+    var onUp = function() {
+      $document.off("mousemove", onMove);
+      $document.off("mouseup", onUp);
+      if(typeof(Storage) !== "undefined") {
+        localStorage.setItem("mailhogViewColumnsWidth", $scope.columnsListWidth);
+        localStorage.setItem("mailhogViewStackedHeight", $scope.stackedListHeight);
+      }
+      $scope.$applyAsync(function() {
+        $scope.resizePreview();
+      });
+    };
+
+    $document.on("mousemove", onMove);
+    $document.on("mouseup", onUp);
+  }
+
   $scope.fetchSettings = function() {
     $scope.settingsLoading = true;
     $scope.settingsError = "";
@@ -243,6 +334,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
 
   $scope.openSettings = function() {
     $scope.preview = null;
+    $scope.selectedMessageID = null;
     $scope.searching = false;
     $scope.showSettings = true;
     $scope.fetchSettings();
@@ -278,8 +370,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
 
   $scope.backToInbox = function() {
     $scope.showSettings = false;
-    $scope.preview = null;
     $scope.searching = false;
+    $scope.startIndex = 0;
+    $scope.refresh();
+  }
+  $scope.closePreview = function() {
+    $scope.preview = null;
+    $scope.selectedMessageID = null;
+    $scope.previewAllHeaders = false;
   }
   $scope.backToInboxFirst = function() {
     $scope.selectInbox();
@@ -359,8 +457,19 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   }
 
   $scope.resizePreview = function() {
-    $('.tab-content').height($(window).innerHeight() - $('.tab-content').offset().top);
-    $('.tab-content .tab-pane').height($(window).innerHeight() - $('.tab-content').offset().top);
+    var preview = $('.mail-preview-pane .preview:visible');
+    if(preview.length === 0) {
+      return;
+    }
+    var tabContent = preview.find('.tab-content');
+    if(tabContent.length === 0) {
+      return;
+    }
+    var available = preview.innerHeight() - tabContent.position().top - 12;
+    if(available > 120) {
+      tabContent.height(available);
+      tabContent.find('.tab-pane').height(available);
+    }
   }
 
   $scope.getSender = function(message) {
@@ -457,10 +566,34 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
       url += "&folder=" + encodeURIComponent($scope.selectedFolder);
     }
     $http.get(url).success(function(data) {
-      $scope.messages = data.items;
+      $scope.messages = data.items || [];
       $scope.totalMessages = data.total;
       $scope.countMessages = data.count;
       $scope.startMessages = data.start;
+
+      if($scope.autoSelectFirstOnNextRefresh) {
+        if($scope.messages.length > 0) {
+          $scope.selectMessage($scope.messages[0]);
+        } else {
+          $scope.preview = null;
+          $scope.selectedMessageID = null;
+        }
+        $scope.autoSelectFirstOnNextRefresh = false;
+      } else if($scope.selectedMessageID) {
+        var foundSelected = false;
+        for(var i = 0; i < $scope.messages.length; i++) {
+          if($scope.messages[i].ID === $scope.selectedMessageID) {
+            foundSelected = true;
+            break;
+          }
+        }
+        if(!foundSelected) {
+          $scope.preview = null;
+          $scope.selectedMessageID = null;
+          $scope.previewAllHeaders = false;
+        }
+      }
+
       $scope.refreshFolders();
       e.done();
     });
@@ -522,7 +655,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   }
 
   $scope.selectMessage = function(message) {
+    if(!message || !message.ID) {
+      return;
+    }
     $scope.showSettings = false;
+    $scope.selectedMessageID = message.ID;
     $timeout(function(){
       $scope.resizePreview();
     }, 0);
@@ -737,6 +874,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
         $scope.selectedFolder = "";
       }
       $scope.preview = null;
+      $scope.selectedMessageID = null;
       $scope.startIndex = 0;
       $scope.startMessages = 0;
       $scope.searching = false;
@@ -805,6 +943,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   	$http.delete($scope.host + 'api/v1/messages').success(function() {
   		$scope.refresh();
   		$scope.preview = null;
+      $scope.selectedMessageID = null;
       e.done()
   	});
   }
@@ -812,7 +951,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout) {
   $scope.deleteOne = function(message) {
     var e = $scope.startEvent("Deleting message", message.ID, "glyphicon-remove");
   	$http.delete($scope.host + 'api/v1/messages/' + message.ID).success(function() {
-  		if($scope.preview._id == message._id) $scope.preview = null;
+      if($scope.selectedMessageID === message.ID) {
+        $scope.selectedMessageID = null;
+      }
+  		if($scope.preview && ($scope.preview._id == message._id || $scope.preview.ID === message.ID)) $scope.preview = null;
   		$scope.refresh();
       e.done();
   	});
