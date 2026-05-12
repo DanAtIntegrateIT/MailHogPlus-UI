@@ -125,9 +125,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.jim = null
 
-  $scope.smtpmech = "NONE"
   $scope.selectedOutgoingSMTP = ""
-  $scope.saveSMTPServer = false;
+  $scope.releaseEmailAddress = "";
+  $scope.configuredOutgoingSMTP = {};
+  $scope.configuredOutgoingSMTPNames = [];
   $scope.selectedFolder = "";
   $scope.folderPendingDelete = "";
   $scope.folderPendingDeleteIsInbox = false;
@@ -142,7 +143,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     storageType: "maildir",
     maildirPath: "",
     defaultFolders: [],
-    forceDefaultInboxOnly: false
+    forceDefaultInboxOnly: false,
+    outgoingSMTP: []
   };
   $scope.settingsDefaultFolderInput = "";
   $scope.settingsRequiresRestart = false;
@@ -907,6 +909,221 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return false;
   }
 
+  $scope.newOutgoingSMTPServer = function() {
+    return {
+      name: "",
+      host: "",
+      port: "25",
+      mechanism: "NONE",
+      username: "",
+      password: "",
+      email: ""
+    };
+  }
+
+  $scope.normalizeOutgoingSMTPServer = function(rawServer, fallbackName) {
+    var source = rawServer || {};
+    var readField = function(lowerKey, upperKey, defaultValue) {
+      if(source[lowerKey] !== undefined && source[lowerKey] !== null) {
+        return source[lowerKey];
+      }
+      if(source[upperKey] !== undefined && source[upperKey] !== null) {
+        return source[upperKey];
+      }
+      return defaultValue;
+    };
+
+    var mechanismValue = ("" + readField("mechanism", "Mechanism", "NONE")).trim().toUpperCase();
+    if(mechanismValue !== "PLAIN" && mechanismValue !== "CRAMMD5") {
+      mechanismValue = "NONE";
+    }
+
+    var nameValue = ("" + readField("name", "Name", "")).trim();
+    if(nameValue.length === 0 && fallbackName) {
+      nameValue = ("" + fallbackName).trim();
+    }
+
+    var normalized = {
+      name: nameValue,
+      host: ("" + readField("host", "Host", "")).trim(),
+      port: ("" + readField("port", "Port", "")).trim(),
+      mechanism: mechanismValue,
+      username: ("" + readField("username", "Username", "")).trim(),
+      password: "" + readField("password", "Password", ""),
+      email: ("" + readField("email", "Email", "")).trim()
+    };
+    if(normalized.mechanism === "NONE") {
+      normalized.username = "";
+      normalized.password = "";
+    }
+    return normalized;
+  }
+
+  $scope.extractOutgoingSMTPServers = function(rawServers) {
+    if(!rawServers) {
+      return [];
+    }
+    if(Array.isArray(rawServers)) {
+      return rawServers;
+    }
+    var extracted = [];
+    angular.forEach(rawServers, function(server, key) {
+      extracted.push($scope.normalizeOutgoingSMTPServer(server, key));
+    });
+    return extracted;
+  }
+
+  $scope.sanitizeOutgoingSMTPServers = function(rawServers) {
+    var sourceServers = $scope.extractOutgoingSMTPServers(rawServers);
+    var cleaned = [];
+    var seen = {};
+    for(var i = 0; i < sourceServers.length; i++) {
+      var server = $scope.normalizeOutgoingSMTPServer(sourceServers[i]);
+      var hasAnyValue = server.name.length > 0 ||
+        server.host.length > 0 ||
+        server.port.length > 0 ||
+        server.email.length > 0 ||
+        server.username.length > 0 ||
+        server.password.length > 0 ||
+        server.mechanism !== "NONE";
+      if(!hasAnyValue) {
+        continue;
+      }
+      if(server.name.length === 0 || server.host.length === 0 || server.port.length === 0) {
+        continue;
+      }
+      var normalizedName = server.name.toLowerCase();
+      if(seen[normalizedName]) {
+        continue;
+      }
+      seen[normalizedName] = true;
+      cleaned.push(server);
+    }
+    cleaned.sort(function(a, b) {
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
+    return cleaned;
+  }
+
+  $scope.outgoingSMTPSnapshot = function(rawServers) {
+    var sourceServers = $scope.extractOutgoingSMTPServers(rawServers);
+    var snapshot = [];
+    for(var i = 0; i < sourceServers.length; i++) {
+      var server = $scope.normalizeOutgoingSMTPServer(sourceServers[i]);
+      var hasAnyValue = server.name.length > 0 ||
+        server.host.length > 0 ||
+        server.port.length > 0 ||
+        server.email.length > 0 ||
+        server.username.length > 0 ||
+        server.password.length > 0 ||
+        server.mechanism !== "NONE";
+      if(!hasAnyValue) {
+        continue;
+      }
+      snapshot.push(server);
+    }
+    return snapshot;
+  }
+
+  $scope.validateOutgoingSMTPServers = function(rawServers) {
+    var sourceServers = $scope.extractOutgoingSMTPServers(rawServers);
+    var seen = {};
+    for(var i = 0; i < sourceServers.length; i++) {
+      var server = $scope.normalizeOutgoingSMTPServer(sourceServers[i]);
+      var hasAnyValue = server.name.length > 0 ||
+        server.host.length > 0 ||
+        server.port.length > 0 ||
+        server.email.length > 0 ||
+        server.username.length > 0 ||
+        server.password.length > 0 ||
+        server.mechanism !== "NONE";
+      if(!hasAnyValue) {
+        continue;
+      }
+      if(server.name.length === 0 || server.host.length === 0 || server.port.length === 0) {
+        return "Each outgoing SMTP server needs a name, host, and port.";
+      }
+      var normalizedName = server.name.toLowerCase();
+      if(seen[normalizedName]) {
+        return "Outgoing SMTP server names must be unique.";
+      }
+      seen[normalizedName] = true;
+      if(server.mechanism !== "NONE" && server.username.length === 0) {
+        return "Outgoing SMTP username is required when authentication is enabled.";
+      }
+    }
+    return "";
+  }
+
+  $scope.copyOutgoingSMTPServers = function(rawServers) {
+    var sourceServers = $scope.sanitizeOutgoingSMTPServers(rawServers);
+    var copy = [];
+    for(var i = 0; i < sourceServers.length; i++) {
+      copy.push(angular.extend({}, sourceServers[i]));
+    }
+    return copy;
+  }
+
+  $scope.toOutgoingSMTPPayload = function(rawServers) {
+    var sourceServers = $scope.sanitizeOutgoingSMTPServers(rawServers);
+    var payload = [];
+    for(var i = 0; i < sourceServers.length; i++) {
+      var server = sourceServers[i];
+      payload.push({
+        Name: server.name,
+        Email: server.email,
+        Host: server.host,
+        Port: server.port,
+        Username: server.mechanism === "NONE" ? "" : server.username,
+        Password: server.mechanism === "NONE" ? "" : server.password,
+        Mechanism: server.mechanism
+      });
+    }
+    return payload;
+  }
+
+  $scope.applyConfiguredOutgoingSMTP = function(rawServers) {
+    var sourceServers = $scope.sanitizeOutgoingSMTPServers(rawServers);
+    var nextMap = {};
+    var nextNames = [];
+    for(var i = 0; i < sourceServers.length; i++) {
+      var server = sourceServers[i];
+      nextMap[server.name] = {
+        Name: server.name,
+        Email: server.email,
+        Host: server.host,
+        Port: server.port,
+        Username: server.username,
+        Password: server.password,
+        Mechanism: server.mechanism
+      };
+      nextNames.push(server.name);
+    }
+    $scope.configuredOutgoingSMTP = nextMap;
+    $scope.configuredOutgoingSMTPNames = nextNames;
+    if(!$scope.selectedOutgoingSMTP || !nextMap[$scope.selectedOutgoingSMTP]) {
+      $scope.selectedOutgoingSMTP = nextNames.length > 0 ? nextNames[0] : "";
+    }
+  }
+
+  $scope.hasConfiguredOutgoingSMTP = function() {
+    return $scope.configuredOutgoingSMTPNames.length > 0;
+  }
+
+  $scope.addOutgoingSMTPServer = function() {
+    if(!$scope.settingsForm.outgoingSMTP) {
+      $scope.settingsForm.outgoingSMTP = [];
+    }
+    $scope.settingsForm.outgoingSMTP.push($scope.newOutgoingSMTPServer());
+  }
+
+  $scope.removeOutgoingSMTPServer = function(index) {
+    if(!$scope.settingsForm.outgoingSMTP || index < 0 || index >= $scope.settingsForm.outgoingSMTP.length) {
+      return;
+    }
+    $scope.settingsForm.outgoingSMTP.splice(index, 1);
+  }
+
   $scope.getSettingsSnapshot = function() {
     var retentionDays = parseInt($scope.settingsForm.retentionDays, 10);
     if(isNaN(retentionDays) || retentionDays < 0) {
@@ -916,7 +1133,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       retentionDays: retentionDays,
       storageType: ($scope.settingsForm.storageType || "").toLowerCase(),
       defaultFolders: $scope.sanitizeDefaultFolders($scope.settingsForm.defaultFolders),
-      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly
+      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly,
+      outgoingSMTP: $scope.outgoingSMTPSnapshot($scope.settingsForm.outgoingSMTP || [])
     };
   }
 
@@ -1022,11 +1240,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.settingsLoadedSnapshot = null;
     $scope.settingsDirty = false;
     $http.get($scope.host + 'api/v2/settings').success(function(data) {
+      var loadedOutgoingSMTP = $scope.sanitizeOutgoingSMTPServers(data.outgoingSMTP || []);
       $scope.settingsForm.retentionDays = data.retentionDays || 10;
       $scope.settingsForm.storageType = data.storageType || "maildir";
       $scope.settingsForm.maildirPath = data.maildirPath || "";
       $scope.settingsForm.defaultFolders = $scope.sanitizeDefaultFolders(data.defaultFolders || []);
       $scope.settingsForm.forceDefaultInboxOnly = data.forceDefaultInboxOnly === true;
+      $scope.settingsForm.outgoingSMTP = $scope.copyOutgoingSMTPServers(loadedOutgoingSMTP);
+      $scope.applyConfiguredOutgoingSMTP(loadedOutgoingSMTP);
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsLoading = false;
@@ -1060,7 +1281,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.settingsError = "";
       return;
     }
+    var outgoingSMTPValidationError = $scope.validateOutgoingSMTPServers($scope.settingsForm.outgoingSMTP || []);
+    if(outgoingSMTPValidationError) {
+      $scope.settingsError = outgoingSMTPValidationError;
+      $scope.settingsStatus = "";
+      return;
+    }
     var defaultFolders = $scope.sanitizeDefaultFolders($scope.settingsForm.defaultFolders);
+    var outgoingSMTPPayload = $scope.toOutgoingSMTPPayload($scope.settingsForm.outgoingSMTP || []);
 
     $scope.settingsSaving = true;
     $scope.settingsError = "";
@@ -1069,13 +1297,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       retentionDays: retentionDays,
       storageType: $scope.settingsForm.storageType,
       defaultFolders: defaultFolders,
-      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly
+      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly,
+      outgoingSMTP: outgoingSMTPPayload
     }).success(function(data) {
+      var savedOutgoingSMTP = $scope.sanitizeOutgoingSMTPServers(data.outgoingSMTP || outgoingSMTPPayload);
       $scope.settingsForm.retentionDays = data.retentionDays || retentionDays;
       $scope.settingsForm.storageType = data.storageType || $scope.settingsForm.storageType;
       $scope.settingsForm.maildirPath = data.maildirPath || $scope.settingsForm.maildirPath;
       $scope.settingsForm.defaultFolders = $scope.sanitizeDefaultFolders(data.defaultFolders || defaultFolders);
       $scope.settingsForm.forceDefaultInboxOnly = data.forceDefaultInboxOnly === true;
+      $scope.settingsForm.outgoingSMTP = $scope.copyOutgoingSMTPServers(savedOutgoingSMTP);
+      $scope.applyConfiguredOutgoingSMTP(savedOutgoingSMTP);
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsSaving = false;
@@ -1805,38 +2037,53 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.performFolderDelete(folderName, deleteInboxMessages);
   }
 
-  $scope.releaseOne = function(message) {
-    $scope.releasing = message;
-
-    $http.get($scope.host + 'api/v2/outgoing-smtp').success(function(data) {
-      $scope.outgoingSMTP = data;
-      $('#release-one').modal('show');
-    })
+  $scope.onReleaseServerChanged = function() {
+    if(!$scope.selectedOutgoingSMTP || !$scope.configuredOutgoingSMTP[$scope.selectedOutgoingSMTP]) {
+      $scope.releaseEmailAddress = "";
+      return;
+    }
+    $scope.releaseEmailAddress = $scope.configuredOutgoingSMTP[$scope.selectedOutgoingSMTP].Email || "";
   }
+
+  $scope.releaseOne = function(message) {
+    if(!$scope.hasConfiguredOutgoingSMTP()) {
+      return;
+    }
+    $scope.releasing = message;
+    if(!$scope.selectedOutgoingSMTP || !$scope.configuredOutgoingSMTP[$scope.selectedOutgoingSMTP]) {
+      $scope.selectedOutgoingSMTP = $scope.configuredOutgoingSMTPNames.length > 0 ? $scope.configuredOutgoingSMTPNames[0] : "";
+    }
+    $scope.onReleaseServerChanged();
+    $('#release-one').modal('show');
+  }
+
+  $scope.canConfirmReleaseMessage = function() {
+    var selectedServer = ($scope.selectedOutgoingSMTP || "").trim();
+    var targetEmail = ($scope.releaseEmailAddress || "").trim();
+    return selectedServer.length > 0 && targetEmail.length > 0;
+  }
+
   $scope.confirmReleaseMessage = function() {
+    if(!$scope.releasing || !$scope.releasing.ID) {
+      return;
+    }
+    if(!$scope.canConfirmReleaseMessage()) {
+      return;
+    }
+    var selectedServer = ($scope.selectedOutgoingSMTP || "").trim();
+    var targetEmail = ($scope.releaseEmailAddress || "").trim();
+
     $('#release-one').modal('hide');
     var message = $scope.releasing;
     $scope.releasing = null;
+    $scope.releaseEmailAddress = "";
 
     var e = $scope.startEvent("Releasing message", message.ID, "glyphicon-share");
 
-    if($('#release-message-outgoing').val().length > 0) {
-      authcfg = {
-        name: $('#release-message-outgoing').val(),
-        email: $('#release-message-email').val(),
-      }
-    } else {
-      authcfg = {
-        email: $('#release-message-email').val(),
-        host: $('#release-message-smtp-host').val(),
-        port: $('#release-message-smtp-port').val(),
-        mechanism: $('#release-message-smtp-mechanism').val(),
-        username: $('#release-message-smtp-username').val(),
-        password: $('#release-message-smtp-password').val(),
-        save: $('#release-message-save').is(":checked") ? true : false,
-        name: $('#release-message-server-name').val(),
-      }
-    }
+    var authcfg = {
+      name: selectedServer,
+      email: targetEmail
+    };
 
     $http.post($scope.host + 'api/v1/messages/' + message.ID + '/release', authcfg).success(function() {
       e.done();

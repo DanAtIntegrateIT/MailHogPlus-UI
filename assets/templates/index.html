@@ -77,6 +77,59 @@
         </div>
       </div>
 
+      <div class="settings-section settings-section-outgoing">
+        <h4>Outgoing SMTP servers</h4>
+        <p>Configure relay servers for releasing previewed email messages.</p>
+        <div class="settings-outgoing-list">
+          <div class="settings-outgoing-empty" ng-if="!settingsForm.outgoingSMTP || settingsForm.outgoingSMTP.length === 0">
+            No outgoing SMTP servers configured.
+          </div>
+          <div class="settings-outgoing-item" ng-repeat="server in settingsForm.outgoingSMTP track by $index">
+            <div class="settings-outgoing-item-header">
+              <strong>Server {{ $index + 1 }}</strong>
+              <button type="button" class="btn btn-link btn-xs" ng-click="removeOutgoingSMTPServer($index)">Remove</button>
+            </div>
+            <div class="settings-outgoing-grid">
+              <div class="form-group">
+                <label>Server name</label>
+                <input type="text" class="form-control" ng-model="server.name" placeholder="Primary relay">
+              </div>
+              <div class="form-group">
+                <label>SMTP host</label>
+                <input type="text" class="form-control" ng-model="server.host" placeholder="mail.example.com">
+              </div>
+              <div class="form-group">
+                <label>SMTP port</label>
+                <input type="text" class="form-control" ng-model="server.port" placeholder="25">
+              </div>
+              <div class="form-group">
+                <label>Authentication</label>
+                <select class="form-control" ng-model="server.mechanism">
+                  <option value="NONE">None</option>
+                  <option value="PLAIN">PLAIN</option>
+                  <option value="CRAMMD5">CRAM-MD5</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Default recipient (optional)</label>
+                <input type="email" class="form-control" ng-model="server.email" placeholder="someone@example.com">
+              </div>
+              <div class="form-group" ng-if="server.mechanism !== 'NONE'">
+                <label>Username</label>
+                <input type="text" class="form-control" ng-model="server.username" placeholder="smtp-user">
+              </div>
+              <div class="form-group" ng-if="server.mechanism !== 'NONE'">
+                <label>{{ server.mechanism === 'CRAMMD5' ? 'Secret' : 'Password' }}</label>
+                <input type="password" class="form-control" ng-model="server.password">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-outgoing-actions">
+          <button type="button" class="btn btn-default" ng-click="addOutgoingSMTPServer()">Add SMTP server</button>
+        </div>
+      </div>
+
       <div class="settings-section settings-section-folders">
         <h4>Default inbox folders</h4>
         <p>Pre-create folder names for inbox navigation. They appear even before new mail arrives.</p>
@@ -395,7 +448,7 @@
         <i class="glyphicon glyphicon-save"></i>
       </a>
 
-      <button class="btn btn-default" title="Release" ng-click="releaseOne(preview)">
+      <button class="btn btn-default" title="Release" ng-if="hasConfiguredOutgoingSMTP()" ng-click="releaseOne(preview)">
         <i class="glyphicon glyphicon-share"></i>
       </button>
     </div>
@@ -600,63 +653,27 @@
         <h4 class="modal-title">Release message</h4>
       </div>
       <div class="modal-body">
-        <p>To release this message, select an SMTP server or enter custom settings:</p>
+        <p>Select a configured SMTP server. Add servers from the settings page.</p>
         <form role="form">
           <div class="form-group">
-            <select ng-model="selectedOutgoingSMTP" id="release-message-outgoing" class="form-control">
-              <option value="{{ s.Name }}" ng-repeat="s in outgoingSMTP">{{ s.Name }}</option>
-              <option value="">Use custom settings</option>
+            <label for="release-message-outgoing">SMTP server</label>
+            <select ng-model="selectedOutgoingSMTP" ng-change="onReleaseServerChanged()" id="release-message-outgoing" class="form-control">
+              <option value="{{ serverName }}" ng-repeat="serverName in configuredOutgoingSMTPNames track by serverName">{{ serverName }}</option>
             </select>
           </div>
-          <div ng-if="selectedOutgoingSMTP == ''">
-            <div class="form-group">
-              <div class="checkbox">
-                <label for="release-message-save">
-                  <input ng-model="saveSMTPServer" type="checkbox" id="release-message-save">
-                  Save these settings
-                </label>
-              </div>
-            </div>
-            <div class="form-group" ng-if="saveSMTPServer">
-              <label for="release-message-server-name">Server name</label>
-              <input type="text" autofocus class="form-control" id="release-message-server-name">
-            </div>
-          </div>
+          <p class="help-block" ng-if="selectedOutgoingSMTP && configuredOutgoingSMTP[selectedOutgoingSMTP]">
+            {{ configuredOutgoingSMTP[selectedOutgoingSMTP].Host }}:{{ configuredOutgoingSMTP[selectedOutgoingSMTP].Port }}
+            <span ng-if="configuredOutgoingSMTP[selectedOutgoingSMTP].Mechanism !== 'NONE'"> | {{ configuredOutgoingSMTP[selectedOutgoingSMTP].Mechanism }} authentication</span>
+          </p>
           <div class="form-group">
             <label for="release-message-email">Email address</label>
-            <input type="email" autofocus class="form-control" id="release-message-email" placeholder="someone@example.com">
-          </div>
-          <div ng-if="selectedOutgoingSMTP == ''">
-            <div class="form-group">
-              <label for="release-message-smtp-host">SMTP server</label>
-              <input type="text" class="form-control" id="release-message-smtp-host" placeholder="mail.example.com">
-            </div>
-            <div class="form-group">
-              <label for="release-message-smtp-port">SMTP port</label>
-              <input type="number" class="form-control" id="release-message-smtp-port" value="25">
-            </div>
-            <div class="form-group">
-              <label for="release-message-smtp-username">Authentication</label>
-              <select ng-model="smtpmech" id="release-message-smtp-mechanism" class="form-control">
-                <option selected value="NONE">None</option>
-                <option value="PLAIN">PLAIN</option>
-                <option value="CRAMMD5">CRAM-MD5</option>
-              </select>
-            </div>
-            <div class="form-group" ng-if="smtpmech != 'NONE'">
-              <label for="release-message-smtp-username">Username</label>
-              <input type="text" class="form-control" id="release-message-smtp-username" value="">
-            </div>
-            <div class="form-group" ng-if="smtpmech != 'NONE'">
-              <label for="release-message-smtp-password">{{ smtpmech == 'CRAMMD5' ? "Secret" : "Password" }}</label>
-              <input type="password" class="form-control" id="release-message-smtp-password" value="">
-            </div>
+            <input type="email" class="form-control" id="release-message-email" ng-model="releaseEmailAddress" placeholder="someone@example.com">
           </div>
         </form>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger" ng-click="confirmReleaseMessage()">Release message</button>
+        <button type="button" class="btn btn-danger" ng-click="confirmReleaseMessage()" ng-disabled="!canConfirmReleaseMessage()">Release message</button>
       </div>
     </div>
   </div>

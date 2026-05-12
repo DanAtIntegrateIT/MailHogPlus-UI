@@ -1462,6 +1462,7 @@ select:focus {
 }
 
 .settings-section-general,
+.settings-section-outgoing,
 .settings-section-folders,
 .settings-jim-section,
 .settings-section-danger {
@@ -1551,6 +1552,63 @@ select:focus {
 .settings-connection-fields .settings-field label {
   display: block;
   margin-top: 0;
+}
+
+.settings-outgoing-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-outgoing-empty {
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+  padding: 12px;
+}
+
+.settings-outgoing-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.settings-outgoing-item-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.settings-outgoing-item-header strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.settings-outgoing-item-header .btn-link {
+  color: #b3261e;
+  padding: 0;
+}
+
+.settings-outgoing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.settings-outgoing-grid .form-group {
+  margin-bottom: 0;
+}
+
+.settings-outgoing-actions {
+  margin-top: 10px;
+}
+
+.settings-outgoing-actions .btn {
+  min-width: 152px;
 }
 
 .settings-folder-editor {
@@ -1873,6 +1931,7 @@ select:focus {
   }
 
   .settings-section-general,
+  .settings-section-outgoing,
   .settings-section-folders,
   .settings-jim-section,
   .settings-section-danger {
@@ -1898,6 +1957,14 @@ select:focus {
 
   .settings-connection-fields {
     grid-template-columns: 1fr;
+  }
+
+  .settings-outgoing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-outgoing-actions .btn {
+    width: 100%;
   }
 
   .settings-sticky-actions {
