@@ -369,6 +369,10 @@
         <i class="glyphicon glyphicon-remove"></i>
       </button>
 
+      <button class="btn btn-default" ng-click="openMessageFullView(preview, $event)" title="Open in new window">
+        <i class="glyphicon glyphicon-new-window"></i>
+      </button>
+
       <div class="spacer"></div>
 
       <button class="btn btn-default" ng-class="{ active: isMessageFavorite(preview) }" ng-click="toggleFavorite(preview)" title="Toggle favorite">

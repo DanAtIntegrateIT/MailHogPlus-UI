@@ -1449,6 +1449,108 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return $(".messages :checked").length > 0 ? true : false;
   }
 
+  $scope.getAPIBase = function() {
+    var apiBase = $scope.host && $scope.host.length > 0 ? $scope.host : (location.protocol + '//' + location.hostname + (location.port ? ':' + location.port : '') + location.pathname);
+    if(apiBase.charAt(apiBase.length - 1) !== '/') {
+      apiBase += '/';
+    }
+    return apiBase;
+  }
+
+  $scope.getMessageCidMap = function(message, absoluteURLs) {
+    var cidMap = {};
+    if(!message || !message.ID || !message.MIME || !message.MIME.Parts || !message.MIME.Parts.length) {
+      return cidMap;
+    }
+    var apiBase = absoluteURLs ? $scope.getAPIBase() : "";
+    for(var p in message.MIME.Parts) {
+      for(var h in message.MIME.Parts[p].Headers) {
+        if(h.toLowerCase() == "content-id") {
+          var cid = message.MIME.Parts[p].Headers[h][0]
+          cid = cid.substr(1,cid.length-2)
+          cidMap[cid] = apiBase + "api/v1/messages/" + message.ID + "/mime/part/" + p + "/download"
+        }
+      }
+    }
+    return cidMap;
+  }
+
+  $scope.applyCidMapToHTML = function(html, cidMap) {
+    var output = html || "";
+    if(!cidMap) {
+      return output;
+    }
+    for(var c in cidMap) {
+      var str = "cid:" + c;
+      var pat = str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+      output = output.replace(new RegExp(pat, 'g'), cidMap[c]);
+    }
+    return output;
+  }
+
+  $scope.buildMessagePreviewHTML = function(message, absoluteURLs) {
+    var html = $scope.getMessageHTML(message);
+    var cidMap = $scope.getMessageCidMap(message, absoluteURLs);
+    return $scope.applyCidMapToHTML(html, cidMap);
+  }
+
+  $scope.renderMessageInNewWindow = function(targetWindow, message) {
+    if(!targetWindow) {
+      return;
+    }
+
+    var subject = "";
+    if(message && message.Content && message.Content.Headers && message.Content.Headers["Subject"] && message.Content.Headers["Subject"][0]) {
+      subject = $scope.tryDecodeMime(message.Content.Headers["Subject"][0]);
+    }
+    if(!subject || subject.length === 0) {
+      subject = "Email preview";
+    }
+
+    var content = "";
+    if(message && $scope.hasHTML(message)) {
+      content = $scope.buildMessagePreviewHTML(message, true);
+    } else {
+      var plain = message ? ($scope.getMessagePlain(message) || "") : "";
+      content = "<div style=\"padding:24px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;\"><pre style=\"white-space:pre-wrap;word-break:break-word;border:1px solid #e0e4eb;border-radius:8px;padding:14px;background:#ffffff;color:#202124;\">" + $scope.escapeHtml(plain) + "</pre></div>";
+    }
+
+    targetWindow.document.open();
+    targetWindow.document.write('<!doctype html><html><head><meta charset="utf-8"><title>' + $scope.escapeHtml(subject) + '</title><style>html,body{margin:0;padding:0;background:#fff;color:#202124;}img{max-width:100%;height:auto;}table{max-width:100%;}</style></head><body>' + content + '</body></html>');
+    targetWindow.document.close();
+  }
+
+  $scope.openMessageFullView = function(message, $event) {
+    if($event) {
+      $event.preventDefault();
+      $event.stopPropagation();
+    }
+    if(!message || !message.ID) {
+      return;
+    }
+
+    var previewWindow = window.open("", "_blank");
+    if(!previewWindow) {
+      return;
+    }
+
+    previewWindow.document.open();
+    previewWindow.document.write("<!doctype html><html><head><meta charset=\"utf-8\"><title>Email preview</title></head><body style=\"font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;padding:24px;color:#5f6368;\">Loading email preview...</body></html>");
+    previewWindow.document.close();
+
+    if($scope.cache[message.ID]) {
+      $scope.renderMessageInNewWindow(previewWindow, $scope.cache[message.ID]);
+      return;
+    }
+
+    $http.get($scope.host + 'api/v1/messages/' + message.ID).success(function(data) {
+      $scope.cache[message.ID] = data;
+      $scope.renderMessageInNewWindow(previewWindow, data);
+    }).error(function() {
+      $scope.renderMessageInNewWindow(previewWindow, message);
+    });
+  }
+
   $scope.selectMessage = function(message) {
     if(!message || !message.ID) {
       return;
@@ -1473,29 +1575,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         // FIXME
         // - nested mime parts can't be downloaded
 
-        data.$cidMap = {};
-        if(data.MIME && data.MIME.Parts.length) {
-          for(p in data.MIME.Parts) {
-            for(h in data.MIME.Parts[p].Headers) {
-              if(h.toLowerCase() == "content-id") {
-                cid = data.MIME.Parts[p].Headers[h][0]
-                cid = cid.substr(1,cid.length-2)
-                data.$cidMap[cid] = "api/v1/messages/" + message.ID + "/mime/part/" + p + "/download"
-              }
-            }
-          }
-        }
-        console.log(data.$cidMap)
-        // TODO
-        // - scan HTML parts for elements containing CID URI and replace
-
-        h = $scope.getMessageHTML(data)
-        for(c in data.$cidMap) {
-	  str = "cid:" + c;
-	  pat = str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
-          h = h.replace(new RegExp(pat, 'g'), data.$cidMap[c])
-        }
-	      data.previewHTML = $sce.trustAsHtml(h);
+        data.$cidMap = $scope.getMessageCidMap(data, false);
+        data.previewHTML = $sce.trustAsHtml($scope.buildMessagePreviewHTML(data, false));
   		  $scope.preview = data;
         $scope.loadEmailQuality(data);
   		  preview = $scope.cache[message.ID];
