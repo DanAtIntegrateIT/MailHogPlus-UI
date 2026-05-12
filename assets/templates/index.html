@@ -366,6 +366,16 @@
                   {{ tryDecodeMime((preview.Content.Headers["To"] || []).join(', ') || preview.To[0].Mailbox + "@" + preview.To[0].Domain) }}
                 </td>
               </tr>
+              <tr ng-if="preview.qualityLoading || preview.quality || preview.qualityError">
+                <th>Quality</th>
+                <td>
+                  <span ng-if="preview.qualityLoading" class="quality-inline">Email quality: checking...</span>
+                  <span ng-if="preview.quality" class="quality-inline" ng-class="qualityClass(preview.quality)">
+                    Email quality: {{ qualityScoreText(preview.quality) }} / 10 - {{ preview.quality.ragStatus }}
+                  </span>
+                  <span ng-if="preview.qualityError" class="quality-inline quality-unavailable">{{ preview.qualityError }}</span>
+                </td>
+              </tr>
             </tbody>
             <tbody ng-if="previewAllHeaders">
               <tr ng-repeat="(header, value) in preview.Content.Headers">
@@ -394,6 +404,7 @@
           <li ng-class="{ active: !hasHTML(preview) }"><a href="#preview-plain" data-toggle="tab">Plain text</a></li>
           <li><a href="#preview-source" data-toggle="tab">Source</a></li>
           <li ng-if="getMessageAttachments(preview).length > 0"><a href="#preview-attachments" data-toggle="tab">Attachments ({{ getMessageAttachments(preview).length }})</a></li>
+          <li><a href="#preview-quality" data-toggle="tab">RAG</a></li>
           <li ng-if="preview.MIME"><a href="#preview-mime" data-toggle="tab">MIME</a></li>
         </ul>
 
@@ -401,6 +412,47 @@
           <iframe target-blank="" ng-if="hasHTML(preview)" ng-class="{ active: hasHTML(preview) }" class="tab-pane" id="preview-html" srcdoc="{{preview.previewHTML}}" seamless frameborder="0" style="width: 100%"></iframe>
           <div class="tab-pane" ng-class="{ active: !hasHTML(preview) }" id="preview-plain" ng-bind-html="formatMessagePlain(preview)"></div>
           <div class="tab-pane" id="preview-source">{{ getSource(preview) }}</div>
+          <div class="tab-pane quality-pane" id="preview-quality">
+            <div ng-if="preview.qualityLoading" class="quality-loading">Checking email quality...</div>
+            <div ng-if="preview.qualityError" class="quality-error">{{ preview.qualityError }}</div>
+            <div ng-if="preview.quality">
+              <div class="quality-overview" ng-class="qualityClass(preview.quality)">
+                <div class="quality-rag">{{ preview.quality.ragStatus }}</div>
+                <div>
+                  <div class="quality-score">{{ qualityScoreText(preview.quality) }} / 10</div>
+                  <div class="quality-summary">{{ preview.quality.summary }}</div>
+                </div>
+              </div>
+
+              <div class="quality-hint-group" ng-if="preview.quality.criticalIssues && preview.quality.criticalIssues.length > 0">
+                <h4>Critical issues</h4>
+                <div class="quality-hint quality-critical" ng-repeat="hint in preview.quality.criticalIssues">
+                  <strong>{{ hint.area }}</strong>
+                  <span>{{ hint.message }}</span>
+                </div>
+              </div>
+
+              <div class="quality-hint-group" ng-if="getQualityHintsBySeverity(preview.quality, 'warning').length > 0">
+                <h4>Warnings</h4>
+                <div class="quality-hint quality-warning" ng-repeat="hint in getQualityHintsBySeverity(preview.quality, 'warning')">
+                  <strong>{{ hint.area }}</strong>
+                  <span>{{ hint.message }}</span>
+                </div>
+              </div>
+
+              <div class="quality-hint-group" ng-if="getQualityHintsBySeverity(preview.quality, 'info').length > 0">
+                <h4>Suggestions</h4>
+                <div class="quality-hint quality-info" ng-repeat="hint in getQualityHintsBySeverity(preview.quality, 'info')">
+                  <strong>{{ hint.area }}</strong>
+                  <span>{{ hint.message }}</span>
+                </div>
+              </div>
+
+              <div class="quality-empty" ng-if="!hasQualityIssues(preview.quality)">
+                No significant issues found. This email appears suitable for sending.
+              </div>
+            </div>
+          </div>
           <div class="tab-pane" id="preview-mime">
             <div ng-repeat="part in preview.MIME.Parts" class="mime-part">
               <a href="{{ host }}api/v1/messages/{{ preview.ID }}/mime/part/{{ $index }}/download" type="button" class="btn btn-default btn-sm">

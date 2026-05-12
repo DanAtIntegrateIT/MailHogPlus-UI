@@ -63,6 +63,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.favoriteStateByMessageID = {};
   $scope.readStateByMessageID = {};
   $scope.attachmentCacheByMessageID = {};
+  $scope.qualityCacheByMessageID = {};
 
   function parseNumber(v, fallback) {
     var n = parseFloat(v);
@@ -409,6 +410,76 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         }, idx * 140);
       })(attachments[i].path, i);
     }
+  }
+
+  $scope.loadEmailQuality = function(message) {
+    if(!message || !message.ID) {
+      return;
+    }
+    var messageID = message.ID;
+    if($scope.qualityCacheByMessageID[messageID]) {
+      message.quality = $scope.qualityCacheByMessageID[messageID];
+      message.qualityLoading = false;
+      message.qualityError = "";
+    } else {
+      message.qualityLoading = true;
+      message.qualityError = "";
+    }
+
+    $http.get($scope.host + 'api/v2/messages/' + encodeURIComponent(messageID) + '/quality').success(function(data) {
+      $scope.qualityCacheByMessageID[messageID] = data;
+      message.quality = data;
+      message.qualityLoading = false;
+      if($scope.preview && $scope.preview.ID === messageID) {
+        $scope.preview.quality = data;
+        $scope.preview.qualityLoading = false;
+        $scope.preview.qualityError = "";
+        $timeout(function() {
+          $scope.resizePreview();
+        }, 0);
+      }
+    }).error(function() {
+      message.qualityLoading = false;
+      message.qualityError = "Email quality check is unavailable.";
+      if($scope.preview && $scope.preview.ID === messageID) {
+        $scope.preview.qualityLoading = false;
+        $scope.preview.qualityError = message.qualityError;
+      }
+    });
+  }
+
+  $scope.qualityClass = function(result) {
+    if(!result || !result.ragStatus) {
+      return "";
+    }
+    return "quality-" + result.ragStatus.toLowerCase();
+  }
+
+  $scope.qualityScoreText = function(result) {
+    if(!result || typeof result.score === "undefined") {
+      return "";
+    }
+    return parseFloat(result.score).toFixed(1);
+  }
+
+  $scope.getQualityHintsBySeverity = function(result, severity) {
+    if(!result || !result.hints || !severity) {
+      return [];
+    }
+    var matches = [];
+    for(var i = 0; i < result.hints.length; i++) {
+      if(result.hints[i].severity === severity) {
+        matches.push(result.hints[i]);
+      }
+    }
+    return matches;
+  }
+
+  $scope.hasQualityIssues = function(result) {
+    if(!result) {
+      return false;
+    }
+    return (result.criticalIssues && result.criticalIssues.length > 0) || (result.hints && result.hints.length > 0);
   }
 
   $scope.isMessageFavorite = function(message) {
@@ -1214,6 +1285,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }, 0);
   	if($scope.cache[message.ID]) {
   		$scope.preview = $scope.cache[message.ID];
+      $scope.loadEmailQuality($scope.preview);
       //reflow();
   	} else {
   		$scope.preview = message;
@@ -1248,6 +1320,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         }
 	      data.previewHTML = $sce.trustAsHtml(h);
   		  $scope.preview = data;
+        $scope.loadEmailQuality(data);
   		  preview = $scope.cache[message.ID];
         //reflow();
         e.done();
@@ -1497,6 +1570,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.favoriteStateByMessageID = {};
       $scope.readStateByMessageID = {};
       $scope.attachmentCacheByMessageID = {};
+      $scope.qualityCacheByMessageID = {};
       $scope.persistFavoriteState();
       $scope.persistReadState();
   		$scope.refresh();
@@ -1513,6 +1587,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       delete $scope.favoriteStateByMessageID[message.ID];
       delete $scope.readStateByMessageID[message.ID];
       delete $scope.attachmentCacheByMessageID[message.ID];
+      delete $scope.qualityCacheByMessageID[message.ID];
       $scope.persistFavoriteState();
       $scope.persistReadState();
       if($scope.selectedMessageID === message.ID) {
