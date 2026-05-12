@@ -109,7 +109,7 @@
             <span class="settings-toggle-title">Force default inbox only</span>
           </label>
           <p class="help-block settings-help-text">
-            Only listed default folders are accepted as SMTP usernames. Any other username is rejected with <code>unknown user folder</code>.
+            SMTP AUTH is required. Username cannot be blank and must match a listed default folder. Unknown usernames are rejected with <code>unknown user folder</code>.
           </p>
         </div>
       </div>
@@ -160,6 +160,14 @@
         <p class="jim-doc-link">
           <a href="https://github.com/DanAtIntegrateIT/MailHogPlus/blob/master/docs/JIM.md" target="_blank">Jim documentation on GitHub</a>
         </p>
+      </div>
+
+      <div class="settings-section settings-section-danger">
+        <h4>Danger zone</h4>
+        <p>Delete all messages across Inbox and every folder. This cannot be undone.</p>
+        <div class="settings-danger-actions">
+          <button type="button" class="btn btn-danger" ng-click="deleteAll()">Delete all messages</button>
+        </div>
       </div>
     </div>
 

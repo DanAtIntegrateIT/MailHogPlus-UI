@@ -1241,7 +1241,8 @@ select:focus {
 
 .settings-section-general,
 .settings-section-folders,
-.settings-jim-section {
+.settings-jim-section,
+.settings-section-danger {
   grid-column: 1 / -1;
 }
 
@@ -1455,6 +1456,19 @@ select:focus {
   font-size: 12px;
 }
 
+.settings-section-danger {
+  background: #fff8f8;
+  border-color: #f0d2cf;
+}
+
+.settings-section-danger h4 {
+  color: #b3261e;
+}
+
+.settings-danger-actions .btn-danger {
+  min-width: 170px;
+}
+
 .settings-sticky-actions {
   align-items: center;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, #ffffff 55%);
@@ -1616,7 +1630,8 @@ select:focus {
 
   .settings-section-general,
   .settings-section-folders,
-  .settings-jim-section {
+  .settings-jim-section,
+  .settings-section-danger {
     grid-column: auto;
   }
 
@@ -1654,6 +1669,11 @@ select:focus {
 
   .settings-sticky-buttons .btn {
     flex: 1 1 0;
+  }
+
+  .settings-danger-actions .btn-danger {
+    width: 100%;
+    min-width: 0;
   }
 
   .quality-overview {
