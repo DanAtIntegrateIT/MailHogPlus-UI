@@ -1,4 +1,46 @@
-<div class="toolbar" ng-if="!preview && !searching">
+<div class="settings-page" ng-if="showSettings">
+  <div class="settings-card">
+    <div class="settings-header">
+      <h3>Server settings</h3>
+      <p>Configure message retention for automatic cleanup.</p>
+    </div>
+
+    <div class="alert alert-danger" ng-if="settingsError">{{ settingsError }}</div>
+    <div class="alert alert-success" ng-if="settingsStatus">{{ settingsStatus }}</div>
+    <div class="alert alert-info" ng-if="settingsLoading">Loading settings...</div>
+    <div class="alert alert-warning" ng-if="settingsForm.storageType === 'memory' && !settingsLoading">
+      Memory storage is volatile: messages are lost after system restart, crash, or server reboot.
+    </div>
+    <div class="alert alert-warning" ng-if="settingsRequiresRestart && !settingsLoading">
+      Storage mode changes apply after server restart.
+    </div>
+
+    <form role="form" ng-if="!settingsLoading" ng-submit="saveSettings()">
+      <div class="form-group">
+        <label for="settings-retention-days">Message retention (days)</label>
+        <input id="settings-retention-days" type="number" min="1" class="form-control" ng-model="settingsForm.retentionDays">
+      </div>
+      <div class="form-group">
+        <label for="settings-storage-type">Storage backend</label>
+        <select id="settings-storage-type" class="form-control" ng-model="settingsForm.storageType">
+          <option value="maildir">Maildir (persistent)</option>
+          <option value="memory">Memory only (non-persistent)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="settings-maildir-path">Maildir path</label>
+        <input id="settings-maildir-path" type="text" class="form-control" ng-model="settingsForm.maildirPath" readonly>
+      </div>
+      <div class="settings-actions">
+        <button class="btn btn-primary" type="submit" ng-disabled="settingsSaving">
+          {{ settingsSaving ? 'Saving...' : 'Save settings' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toolbar" ng-if="!preview && !searching && !showSettings">
   <button class="btn btn-default" ng-click="refresh()" title="Refresh">
     <i class="glyphicon glyphicon-refresh"></i>
   </button>
@@ -27,7 +69,7 @@
   </span>
 </div>
 
-<div class="messages container-fluid" ng-if="!preview && !searching">
+<div class="messages container-fluid" ng-if="!preview && !searching && !showSettings">
   <div class="msglist-message row" ng-repeat="message in messages" ng-click="selectMessage(message)">
     <div class="col-md-3 col-sm-4">
       {{ getSender(message) }}
@@ -61,7 +103,7 @@
   </div>
 </div>
 
-<div class="toolbar" ng-if="searching">
+<div class="toolbar" ng-if="searching && !showSettings">
   <span class="pull-right">
     <span style="padding-right: 8px">
       <strong>{{ countSearchMessages > 0 ? startSearchMessages + 1 : 0 }}-{{ (startSearchMessages + countSearchMessages) || 0 }}</strong>
@@ -90,7 +132,7 @@
   <span>Searching for messages <strong>{{searchKind}}</strong> {{ searchedText }}</span>
 </div>
 
-<div class="messages container-fluid" ng-if="searching">
+<div class="messages container-fluid" ng-if="searching && !showSettings">
   <div class="msglist-message row" ng-repeat="message in searchMessages" ng-click="selectMessage(message)">
     <div class="col-md-3 col-sm-4">
       {{ getSender(message) }}
@@ -118,7 +160,7 @@
   </div>
 </div>
 
-<div class="toolbar" ng-if="preview">
+<div class="toolbar" ng-if="preview && !showSettings">
   <button class="btn btn-default" ng-click="backToInbox()" title="Back to Inbox">
     <i class="glyphicon glyphicon-arrow-left"></i>
   </button>
@@ -138,7 +180,7 @@
   </button>
 </div>
 
-<div class="preview" ng-if="preview">
+<div class="preview" ng-if="preview && !showSettings">
   <div class="row headers">
     <div class="col-md-10">
       <table>

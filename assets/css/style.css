@@ -642,6 +642,47 @@ select:focus {
   border-bottom: 0;
 }
 
+.settings-page {
+  padding: 22px;
+  background: var(--app-bg);
+  min-height: calc(100vh - 64px);
+}
+
+.settings-card {
+  max-width: 640px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+}
+
+.settings-header h3 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  color: var(--text);
+}
+
+.settings-header p {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+}
+
+.settings-actions {
+  margin-top: 16px;
+}
+
+.settings-card .btn-primary {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.settings-card .btn-primary:hover,
+.settings-card .btn-primary:focus {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
+}
+
 @media (max-width: 767px) {
   body {
     overflow: auto;
