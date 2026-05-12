@@ -135,7 +135,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     retentionDays: 10,
     storageType: "maildir",
     maildirPath: "",
-    defaultFolders: []
+    defaultFolders: [],
+    forceDefaultInboxOnly: false
   };
   $scope.settingsDefaultFolderInput = "";
   $scope.settingsRequiresRestart = false;
@@ -830,6 +831,20 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.settingsForm.defaultFolders = next;
   }
 
+  $scope.isDefaultFolder = function(folderName) {
+    var normalizedFolder = $scope.normalizeFolderName(folderName);
+    if(normalizedFolder.length === 0) {
+      return false;
+    }
+    var defaults = $scope.sanitizeDefaultFolders($scope.settingsForm.defaultFolders);
+    for(var i = 0; i < defaults.length; i++) {
+      if($scope.normalizeFolderName(defaults[i]) === normalizedFolder) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   $scope.setViewMode = function(mode) {
     if(mode !== "columns" && mode !== "stacked") {
       return;
@@ -900,6 +915,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.settingsForm.storageType = data.storageType || "maildir";
       $scope.settingsForm.maildirPath = data.maildirPath || "";
       $scope.settingsForm.defaultFolders = $scope.sanitizeDefaultFolders(data.defaultFolders || []);
+      $scope.settingsForm.forceDefaultInboxOnly = data.forceDefaultInboxOnly === true;
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsLoading = false;
@@ -933,12 +949,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $http.put($scope.host + 'api/v2/settings', {
       retentionDays: retentionDays,
       storageType: $scope.settingsForm.storageType,
-      defaultFolders: defaultFolders
+      defaultFolders: defaultFolders,
+      forceDefaultInboxOnly: !!$scope.settingsForm.forceDefaultInboxOnly
     }).success(function(data) {
       $scope.settingsForm.retentionDays = data.retentionDays || retentionDays;
       $scope.settingsForm.storageType = data.storageType || $scope.settingsForm.storageType;
       $scope.settingsForm.maildirPath = data.maildirPath || $scope.settingsForm.maildirPath;
       $scope.settingsForm.defaultFolders = $scope.sanitizeDefaultFolders(data.defaultFolders || defaultFolders);
+      $scope.settingsForm.forceDefaultInboxOnly = data.forceDefaultInboxOnly === true;
       $scope.settingsDefaultFolderInput = "";
       $scope.settingsRequiresRestart = !!data.requiresRestart;
       $scope.settingsSaving = false;
@@ -1227,6 +1245,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     });
   }
   $scope.refresh();
+  $scope.fetchSettings();
 
   $scope.showNewer = function() {
     $scope.startIndex -= $scope.itemsPerPage;
@@ -1591,7 +1610,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.deleteAllConfirm = function() {
   	$('#confirm-delete-all').modal('hide');
     var e = $scope.startEvent("Deleting all messages", null, "glyphicon-remove-circle");
-  	$http.delete($scope.host + 'api/v1/messages').success(function() {
+  	$http.delete($scope.host + 'api/v2/messages').success(function() {
       $scope.lastSelectedMessageByFolder = {};
       $scope.restoreMessageIDOnNextRefresh = null;
       $scope.favoriteStateByMessageID = {};

@@ -88,7 +88,7 @@
             </li>
             <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
               <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
-                <span class="glyphicon glyphicon-folder-open"></span>
+                <span class="glyphicon glyphicon-folder-open folder-icon" ng-class="{ 'folder-icon-default': isDefaultFolder(folder.name) }" title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
                 {{ folder.name }}
                 <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
                   <span class="glyphicon glyphicon-trash"></span>

@@ -437,6 +437,14 @@ select:focus {
   color: var(--text-soft);
 }
 
+.nav-pills > li.folder-link > a .folder-icon-default {
+  color: var(--blue);
+}
+
+.nav-pills > li.folder-link.active > a .folder-icon-default {
+  color: var(--blue-dark);
+}
+
 .nav-pills > li.folder-link > a .badge {
   position: absolute;
   top: 9px;

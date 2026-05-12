@@ -94,6 +94,16 @@
           <button type="button" class="btn btn-default" ng-click="addDefaultFolder(settingsDefaultFolderInput)">Add</button>
         </div>
       </div>
+      <hr>
+      <div class="checkbox">
+        <label for="settings-force-default-inbox-only">
+          <input id="settings-force-default-inbox-only" type="checkbox" ng-model="settingsForm.forceDefaultInboxOnly">
+          Force default inbox only
+        </label>
+      </div>
+      <p class="help-block settings-help-text">
+        Only listed default folders are accepted as SMTP usernames. Any other username is rejected with <code>unknown user folder</code>.
+      </p>
     </div>
 
     <div class="settings-section settings-jim-section" ng-if="!settingsLoading">
