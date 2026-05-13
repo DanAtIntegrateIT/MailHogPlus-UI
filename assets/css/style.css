@@ -1135,7 +1135,7 @@ select:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(248, 250, 253, 0.82);
+  background: rgba(248, 250, 253, 0.97);
   backdrop-filter: blur(1px);
   display: flex;
   flex-direction: column;
@@ -1149,9 +1149,9 @@ select:focus {
 }
 
 .pane-loading-title {
-  color: var(--text-muted);
+  color: #3c4043;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .pane-loading-lines {

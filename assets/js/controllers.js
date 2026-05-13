@@ -991,6 +991,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
     $scope.previewLoading = true;
+    $scope.messages = [];
+    $scope.searchMessages = [];
+    $scope.countMessages = 0;
+    $scope.totalMessages = 0;
+    $scope.countSearchMessages = 0;
+    $scope.totalSearchMessages = 0;
     $scope.preview = null;
     $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;
@@ -1009,6 +1015,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
     $scope.previewLoading = true;
+    $scope.messages = [];
+    $scope.searchMessages = [];
+    $scope.countMessages = 0;
+    $scope.totalMessages = 0;
+    $scope.countSearchMessages = 0;
+    $scope.totalSearchMessages = 0;
     $scope.preview = null;
     $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;

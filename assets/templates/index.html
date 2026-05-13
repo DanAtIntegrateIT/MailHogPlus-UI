@@ -421,7 +421,7 @@
       </div>
     </div>
 
-    <div class="messages" ng-if="!searching">
+    <div class="messages" ng-if="!searching && !mailboxLoading">
       <div class="msglist-message"
            ng-repeat="message in getVisibleMessages() track by message.ID"
            ng-class="{ selected: selectedMessageID === message.ID }"
@@ -469,7 +469,7 @@
       </div>
     </div>
 
-    <div class="messages" ng-if="searching">
+    <div class="messages" ng-if="searching && !mailboxLoading">
       <div class="msglist-message"
            ng-repeat="message in getVisibleMessages() track by message.ID"
            ng-class="{ selected: selectedMessageID === message.ID }"
@@ -524,7 +524,7 @@
       </div>
     </div>
 
-    <div class="toolbar" ng-if="preview">
+    <div class="toolbar" ng-if="preview && !mailboxLoading && !previewLoading">
       <button class="btn btn-default" ng-click="closePreview()" title="Close preview">
         <i class="glyphicon glyphicon-remove"></i>
       </button>
@@ -561,7 +561,7 @@
       <p>Select a message from the list to preview it.</p>
     </div>
 
-    <div class="preview" ng-if="preview">
+    <div class="preview" ng-if="preview && !mailboxLoading && !previewLoading">
       <div class="row headers">
         <div class="col-md-10">
           <table>
