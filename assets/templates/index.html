@@ -293,7 +293,7 @@
 </div>
 
 <div class="mail-workspace" id="mail-workspace" ng-if="!showSettings && !showLogs" ng-class="viewMode === 'columns' ? 'workspace-columns' : 'workspace-stacked'">
-  <div class="mail-list-pane" ng-style="viewMode === 'columns' ? { 'width': columnsListWidth + '%' } : { 'height': stackedListHeight + '%' }">
+  <div class="mail-list-pane" ng-class="{ 'is-loading': mailboxLoading }" ng-style="viewMode === 'columns' ? { 'width': columnsListWidth + '%' } : { 'height': stackedListHeight + '%' }">
     <div class="toolbar" ng-if="!searching">
       <button class="btn btn-default" ng-click="refresh()" title="Refresh">
         <i class="glyphicon glyphicon-refresh"></i>
@@ -414,6 +414,13 @@
       </span>
     </div>
 
+    <div class="pane-loading-overlay" ng-if="mailboxLoading">
+      <div class="pane-loading-title">Loading messages...</div>
+      <div class="pane-loading-lines">
+        <span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+
     <div class="messages" ng-if="!searching">
       <div class="msglist-message"
            ng-repeat="message in getVisibleMessages() track by message.ID"
@@ -509,7 +516,14 @@
 
   <div class="pane-resizer" ng-class="viewMode === 'columns' ? 'resizer-vertical' : 'resizer-horizontal'" ng-mousedown="startPaneResize($event)"></div>
 
-  <div class="mail-preview-pane">
+  <div class="mail-preview-pane" ng-class="{ 'is-loading': mailboxLoading || previewLoading }">
+    <div class="pane-loading-overlay preview-loading-overlay" ng-if="mailboxLoading || previewLoading">
+      <div class="pane-loading-title">{{ mailboxLoading ? 'Updating preview...' : 'Loading preview...' }}</div>
+      <div class="pane-loading-lines">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+
     <div class="toolbar" ng-if="preview">
       <button class="btn btn-default" ng-click="closePreview()" title="Close preview">
         <i class="glyphicon glyphicon-remove"></i>
@@ -542,7 +556,7 @@
       </button>
     </div>
 
-    <div class="preview-empty" ng-if="!preview">
+    <div class="preview-empty" ng-if="!preview && !mailboxLoading && !previewLoading">
       <h4>No email selected</h4>
       <p>Select a message from the list to preview it.</p>
     </div>
