@@ -67,6 +67,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.attachmentCacheByMessageID = {};
   $scope.qualityCacheByMessageID = {};
   $scope.qualityRequestInFlightByMessageID = {};
+  $scope.previewRequestSequence = 0;
+  $scope.previewLoadingTimerPromise = null;
 
   function parseNumber(v, fallback) {
     var n = parseFloat(v);
@@ -145,6 +147,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.showSettings = false;
   $scope.showLogs = false;
   $scope.mailboxLoading = false;
+  $scope.listPaneLoading = false;
   $scope.previewLoading = false;
   $scope.logsLoading = false;
   $scope.logsError = "";
@@ -993,12 +996,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $document.on("keydown", $scope.handleKeyboardShortcuts);
   $scope.$on("$destroy", function() {
     $document.off("keydown", $scope.handleKeyboardShortcuts);
+    if($scope.previewLoadingTimerPromise) {
+      $timeout.cancel($scope.previewLoadingTimerPromise);
+      $scope.previewLoadingTimerPromise = null;
+    }
   });
 
   $scope.selectInbox = function() {
     $scope.showSettings = false;
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
+    $scope.listPaneLoading = true;
     $scope.previewLoading = false;
     $scope.countMessages = 0;
     $scope.totalMessages = 0;
@@ -1019,6 +1027,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showSettings = false;
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
+    $scope.listPaneLoading = true;
     $scope.previewLoading = false;
     $scope.countMessages = 0;
     $scope.totalMessages = 0;
@@ -2020,10 +2029,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.syncSelectionWithVisibleMessages();
       $scope.refreshFolders();
       $scope.mailboxLoading = false;
+      $scope.listPaneLoading = false;
       $scope.previewLoading = false;
       e.done();
     }).error(function() {
       $scope.mailboxLoading = false;
+      $scope.listPaneLoading = false;
       $scope.previewLoading = false;
       e.fail();
     });
@@ -2244,8 +2255,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.resizePreview();
     }, 0);
 
+    // Cancel any previous delayed preview loading state when changing selection.
+    if($scope.previewLoadingTimerPromise) {
+      $timeout.cancel($scope.previewLoadingTimerPromise);
+      $scope.previewLoadingTimerPromise = null;
+    }
+    $scope.previewLoading = false;
+
     if($scope.cache[message.ID]) {
-      $scope.previewLoading = false;
       $scope.preview = $scope.prepareMessageForPreview($scope.cache[message.ID]);
       $scope.loadEmailQuality($scope.preview);
     } else {
@@ -2253,31 +2270,52 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       // normal flows, so use that immediately and avoid click-time refetch.
       if(message.Content && message.Content.Headers) {
         $scope.cache[message.ID] = message;
-        $scope.previewLoading = false;
         $scope.preview = $scope.prepareMessageForPreview(message);
         $scope.loadEmailQuality($scope.preview);
         return;
       }
 
       // Fallback for partial payloads only.
-      $scope.previewLoading = false;
       var requestedMessageID = message.ID;
-      var e = $scope.startEvent("Loading message", message.ID, "glyphicon-download-alt");
+      var requestSequence = ++$scope.previewRequestSequence;
+      var e = null;
+      $scope.previewLoadingTimerPromise = $timeout(function() {
+        if($scope.selectedMessageID !== requestedMessageID || $scope.previewRequestSequence !== requestSequence) {
+          return;
+        }
+        $scope.previewLoading = true;
+        e = $scope.startEvent("Loading message", message.ID, "glyphicon-download-alt");
+      }, 500);
+
       $http.get($scope.host + 'api/v1/messages/' + requestedMessageID).success(function(data) {
         $scope.cache[requestedMessageID] = data;
         if($scope.selectedMessageID !== requestedMessageID) {
-          e.done();
+          if(e) {
+            e.done();
+          }
           return;
         }
         $scope.preview = $scope.prepareMessageForPreview(data);
         $scope.loadEmailQuality($scope.preview);
         $scope.previewLoading = false;
-        e.done();
+        if(e) {
+          e.done();
+        }
       }).error(function() {
         if($scope.selectedMessageID === requestedMessageID) {
           $scope.previewLoading = false;
         }
-        e.fail();
+        if(e) {
+          e.fail();
+        }
+      }).finally(function() {
+        if($scope.previewLoadingTimerPromise) {
+          $timeout.cancel($scope.previewLoadingTimerPromise);
+          $scope.previewLoadingTimerPromise = null;
+        }
+        if($scope.selectedMessageID === requestedMessageID) {
+          $scope.previewLoading = false;
+        }
       });
     }
   }

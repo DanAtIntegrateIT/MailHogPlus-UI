@@ -293,7 +293,7 @@
 </div>
 
 <div class="mail-workspace" id="mail-workspace" ng-if="!showSettings && !showLogs" ng-class="viewMode === 'columns' ? 'workspace-columns' : 'workspace-stacked'">
-  <div class="mail-list-pane" ng-class="{ 'is-loading': mailboxLoading }" ng-style="viewMode === 'columns' ? { 'width': columnsListWidth + '%' } : { 'height': stackedListHeight + '%' }">
+  <div class="mail-list-pane" ng-class="{ 'is-loading': listPaneLoading }" ng-style="viewMode === 'columns' ? { 'width': columnsListWidth + '%' } : { 'height': stackedListHeight + '%' }">
     <div class="toolbar" ng-if="!searching">
       <button class="btn btn-default" ng-click="refresh()" title="Refresh">
         <i class="glyphicon glyphicon-refresh"></i>
@@ -414,7 +414,7 @@
       </span>
     </div>
 
-    <div class="pane-loading-overlay" ng-if="mailboxLoading">
+    <div class="pane-loading-overlay" ng-if="listPaneLoading">
       <div class="pane-loading-title">Loading messages...</div>
       <div class="pane-loading-lines">
         <span></span><span></span><span></span><span></span>
@@ -519,6 +519,12 @@
   <div class="mail-preview-pane" ng-class="{ 'is-loading': mailboxLoading }">
     <div class="pane-loading-overlay preview-loading-overlay" ng-if="mailboxLoading">
       <div class="pane-loading-title">Updating preview...</div>
+      <div class="pane-loading-lines">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="pane-loading-overlay preview-loading-overlay" ng-if="!mailboxLoading && previewLoading">
+      <div class="pane-loading-title">Loading preview...</div>
       <div class="pane-loading-lines">
         <span></span><span></span><span></span>
       </div>
