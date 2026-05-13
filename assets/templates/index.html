@@ -601,12 +601,10 @@
                   <span ng-if="preview.quality" class="quality-inline" ng-class="qualityClass(preview.quality)">
                     Email quality: {{ qualityScoreText(preview.quality) }} / 10 - {{ preview.quality.ragStatus }}
                   </span>
-                  <button type="button"
-                          class="btn btn-link btn-xs quality-inline-help"
+                  <small
+                          class=""
                           ng-if="preview.quality || preview.qualityLoading || preview.qualityError"
-                          ng-click="openRagExplainedModal(); $event.preventDefault(); $event.stopPropagation();">
-                    What does this mean?
-                  </button>
+                  >See RAG Tab for more info.</small>
                   <span ng-if="preview.qualityError" class="quality-inline quality-unavailable">{{ preview.qualityError }}</span>
                 </td>
               </tr>
@@ -638,8 +636,8 @@
           <li ng-class="{ active: !hasHTML(preview) }"><a href="#preview-plain" data-toggle="tab">Plain text</a></li>
           <li><a href="#preview-source" data-toggle="tab">Source</a></li>
           <li ng-if="getMessageAttachments(preview).length > 0"><a href="#preview-attachments" data-toggle="tab">Attachments ({{ getMessageAttachments(preview).length }})</a></li>
-          <li><a href="#preview-quality" data-toggle="tab">RAG</a></li>
           <li ng-if="preview.MIME"><a href="#preview-mime" data-toggle="tab">MIME</a></li>
+          <li><a href="#preview-quality" data-toggle="tab">RAG</a></li>
         </ul>
 
         <div class="tab-content">
