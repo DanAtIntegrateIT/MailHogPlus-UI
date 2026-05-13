@@ -121,6 +121,15 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       } catch(e) {
         $scope.readStateByMessageID = {};
       }
+      $scope.savedReleaseEmailAddress = (localStorage.getItem("mailhogReleaseEmailAddress") || "").trim();
+      try {
+        var savedReleaseEmailMap = localStorage.getItem("mailhogReleaseEmailByServer");
+        if(savedReleaseEmailMap) {
+          $scope.savedReleaseEmailAddressByServer = JSON.parse(savedReleaseEmailMap) || {};
+        }
+      } catch(e) {
+        $scope.savedReleaseEmailAddressByServer = {};
+      }
   }
 
   $scope.startMessages = 0
@@ -135,6 +144,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.selectedOutgoingSMTP = ""
   $scope.releaseEmailAddress = "";
+  $scope.savedReleaseEmailAddress = $scope.savedReleaseEmailAddress || "";
+  $scope.savedReleaseEmailAddressByServer = $scope.savedReleaseEmailAddressByServer || {};
   $scope.configuredOutgoingSMTP = {};
   $scope.configuredOutgoingSMTPNames = [];
   $scope.selectedFolder = "";
@@ -661,6 +672,38 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     localStorage.setItem("mailhogReadStateByMessageID", JSON.stringify($scope.readStateByMessageID || {}));
+  }
+
+  $scope.persistReleaseEmailState = function() {
+    if(typeof(Storage) === "undefined") {
+      return;
+    }
+    localStorage.setItem("mailhogReleaseEmailAddress", ($scope.savedReleaseEmailAddress || "").trim());
+    localStorage.setItem("mailhogReleaseEmailByServer", JSON.stringify($scope.savedReleaseEmailAddressByServer || {}));
+  }
+
+  $scope.getSavedReleaseEmailForServer = function(serverName) {
+    var selectedServer = (serverName || "").trim();
+    if(selectedServer.length > 0) {
+      var savedServerEmail = ($scope.savedReleaseEmailAddressByServer[selectedServer] || "").trim();
+      if(savedServerEmail.length > 0) {
+        return savedServerEmail;
+      }
+    }
+    return ($scope.savedReleaseEmailAddress || "").trim();
+  }
+
+  $scope.rememberReleaseEmail = function(serverName, emailAddress) {
+    var selectedServer = (serverName || "").trim();
+    var targetEmail = (emailAddress || "").trim();
+    if(targetEmail.length === 0) {
+      return;
+    }
+    $scope.savedReleaseEmailAddress = targetEmail;
+    if(selectedServer.length > 0) {
+      $scope.savedReleaseEmailAddressByServer[selectedServer] = targetEmail;
+    }
+    $scope.persistReleaseEmailState();
   }
 
   $scope.pruneFavoriteStateForDeletedMessages = function() {
@@ -2690,7 +2733,12 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.onReleaseServerChanged = function() {
     if(!$scope.selectedOutgoingSMTP || !$scope.configuredOutgoingSMTP[$scope.selectedOutgoingSMTP]) {
-      $scope.releaseEmailAddress = "";
+      $scope.releaseEmailAddress = $scope.getSavedReleaseEmailForServer("");
+      return;
+    }
+    var savedEmail = $scope.getSavedReleaseEmailForServer($scope.selectedOutgoingSMTP);
+    if(savedEmail.length > 0) {
+      $scope.releaseEmailAddress = savedEmail;
       return;
     }
     $scope.releaseEmailAddress = $scope.configuredOutgoingSMTP[$scope.selectedOutgoingSMTP].Email || "";
@@ -2723,6 +2771,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
     var selectedServer = ($scope.selectedOutgoingSMTP || "").trim();
     var targetEmail = ($scope.releaseEmailAddress || "").trim();
+    $scope.rememberReleaseEmail(selectedServer, targetEmail);
 
     $('#release-one').modal('hide');
     var message = $scope.releasing;
