@@ -891,6 +891,7 @@ select:focus {
 
 .mail-list-pane,
 .mail-preview-pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 260px;

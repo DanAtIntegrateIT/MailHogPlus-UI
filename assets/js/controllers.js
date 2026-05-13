@@ -66,6 +66,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.readStateByMessageID = {};
   $scope.attachmentCacheByMessageID = {};
   $scope.qualityCacheByMessageID = {};
+  $scope.qualityRequestInFlightByMessageID = {};
 
   function parseNumber(v, fallback) {
     var n = parseFloat(v);
@@ -740,11 +741,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       message.quality = $scope.qualityCacheByMessageID[messageID];
       message.qualityLoading = false;
       message.qualityError = "";
-    } else {
-      message.qualityLoading = true;
-      message.qualityError = "";
+      return;
     }
 
+    message.qualityLoading = true;
+    message.qualityError = "";
+
+    if($scope.qualityRequestInFlightByMessageID[messageID]) {
+      return;
+    }
+
+    $scope.qualityRequestInFlightByMessageID[messageID] = true;
     $http.get($scope.host + 'api/v2/messages/' + encodeURIComponent(messageID) + '/quality').success(function(data) {
       $scope.qualityCacheByMessageID[messageID] = data;
       message.quality = data;
@@ -764,6 +771,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         $scope.preview.qualityLoading = false;
         $scope.preview.qualityError = message.qualityError;
       }
+    }).finally(function() {
+      delete $scope.qualityRequestInFlightByMessageID[messageID];
     });
   }
 
@@ -990,15 +999,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showSettings = false;
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
-    $scope.previewLoading = true;
-    $scope.messages = [];
-    $scope.searchMessages = [];
+    $scope.previewLoading = false;
     $scope.countMessages = 0;
     $scope.totalMessages = 0;
     $scope.countSearchMessages = 0;
     $scope.totalSearchMessages = 0;
-    $scope.preview = null;
-    $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;
     $scope.queueFolderSelectionRestore("");
     $scope.selectedFolder = "";
@@ -1014,15 +1019,11 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showSettings = false;
     $scope.showLogs = false;
     $scope.mailboxLoading = true;
-    $scope.previewLoading = true;
-    $scope.messages = [];
-    $scope.searchMessages = [];
+    $scope.previewLoading = false;
     $scope.countMessages = 0;
     $scope.totalMessages = 0;
     $scope.countSearchMessages = 0;
     $scope.totalSearchMessages = 0;
-    $scope.preview = null;
-    $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;
     $scope.queueFolderSelectionRestore(folderName || "");
     $scope.selectedFolder = folderName || "";
@@ -2019,9 +2020,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.syncSelectionWithVisibleMessages();
       $scope.refreshFolders();
       $scope.mailboxLoading = false;
-      if(!$scope.preview) {
-        $scope.previewLoading = false;
-      }
+      $scope.previewLoading = false;
       e.done();
     }).error(function() {
       $scope.mailboxLoading = false;
@@ -2221,6 +2220,16 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     });
   }
 
+  $scope.prepareMessageForPreview = function(message) {
+    if(!message || message.$previewPrepared) {
+      return message;
+    }
+    message.$cidMap = $scope.getMessageCidMap(message, false);
+    message.previewHTML = $sce.trustAsHtml($scope.buildMessagePreviewHTML(message, false));
+    message.$previewPrepared = true;
+    return message;
+  }
+
   $scope.selectMessage = function(message) {
     if(!message || !message.ID) {
       return;
@@ -2234,34 +2243,32 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $timeout(function(){
       $scope.resizePreview();
     }, 0);
-  	if($scope.cache[message.ID]) {
+
+    if($scope.cache[message.ID]) {
       $scope.previewLoading = false;
-  		$scope.preview = $scope.cache[message.ID];
+      $scope.preview = $scope.prepareMessageForPreview($scope.cache[message.ID]);
       $scope.loadEmailQuality($scope.preview);
-      //reflow();
-  	} else {
-      $scope.previewLoading = true;
-  		$scope.preview = message;
+    } else {
+      $scope.previewLoading = false;
+      var requestedMessageID = message.ID;
       var e = $scope.startEvent("Loading message", message.ID, "glyphicon-download-alt");
-	  	$http.get($scope.host + 'api/v1/messages/' + message.ID).success(function(data) {
-	  	  $scope.cache[message.ID] = data;
-
-        // FIXME
-        // - nested mime parts can't be downloaded
-
-        data.$cidMap = $scope.getMessageCidMap(data, false);
-        data.previewHTML = $sce.trustAsHtml($scope.buildMessagePreviewHTML(data, false));
-  		  $scope.preview = data;
-        $scope.loadEmailQuality(data);
-  		  preview = $scope.cache[message.ID];
+      $http.get($scope.host + 'api/v1/messages/' + requestedMessageID).success(function(data) {
+        $scope.cache[requestedMessageID] = data;
+        if($scope.selectedMessageID !== requestedMessageID) {
+          e.done();
+          return;
+        }
+        $scope.preview = $scope.prepareMessageForPreview(data);
+        $scope.loadEmailQuality($scope.preview);
         $scope.previewLoading = false;
-        //reflow();
         e.done();
-	    }).error(function() {
-        $scope.previewLoading = false;
+      }).error(function() {
+        if($scope.selectedMessageID === requestedMessageID) {
+          $scope.previewLoading = false;
+        }
         e.fail();
       });
-	   }
+    }
   }
 
   $scope.toggleHeaders = function(val) {
