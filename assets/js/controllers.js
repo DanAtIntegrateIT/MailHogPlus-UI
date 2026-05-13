@@ -405,6 +405,20 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return true;
   }
 
+  $scope.messageMatchesSelectedTag = function(message) {
+    var selectedTag = $scope.normalizeTagName($scope.selectedTag);
+    if(selectedTag.length === 0) {
+      return true;
+    }
+    var tags = $scope.getTagsFromMessage(message) || [];
+    for(var i = 0; i < tags.length; i++) {
+      if($scope.normalizeTagName(tags[i]) === selectedTag) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   $scope.sortFolders = function() {
     $scope.folders.sort(function(a, b) {
       return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
@@ -558,6 +572,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
       var loadPage = function() {
         var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(folderName) + '&start=' + start + '&limit=' + limit + '&order=desc';
+        if($scope.selectedTag && $scope.selectedTag.length > 0) {
+          url += '&tag=' + encodeURIComponent($scope.selectedTag);
+        }
         $http.get(url).success(function(data) {
           if(requestToken !== $scope.folderUnreadCountsRequestToken) {
             return;
@@ -686,6 +703,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.startMessages = 0;
     $scope.startSearchMessages = 0;
     $scope.setSavedTagPreference(newTag);
+    $scope.refreshFolderUnreadCounts();
     $scope.refresh();
   }
 
@@ -1029,7 +1047,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     if(normalizedFolderName.length === 0 && $scope.messageFolderByID[messageID]) {
       normalizedFolderName = $scope.messageFolderByID[messageID];
     }
-    if(normalizedFolderName.length > 0 && wasRead !== willBeRead) {
+    if(normalizedFolderName.length > 0 && wasRead !== willBeRead && $scope.messageMatchesSelectedTag(message)) {
       $scope.addToFolderUnreadCount(normalizedFolderName, willBeRead ? -1 : 1);
     }
     $scope.persistReadState();
@@ -1947,7 +1965,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         $scope.markLastArrivalFolder(messageFolder);
         $scope.bumpFolderCount(messageFolder);
         $scope.trackMessageFolder(message);
-        if(!$scope.isMessageRead(message)) {
+        if(!$scope.isMessageRead(message) && $scope.messageMatchesSelectedTag(message)) {
           $scope.addToFolderUnreadCount(messageFolder, 1);
         }
         if(typeof(Notification) !== "undefined") {
