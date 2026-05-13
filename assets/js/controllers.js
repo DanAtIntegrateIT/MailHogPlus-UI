@@ -542,14 +542,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
           applyMessage(items[i]);
         }
 
+        // Apply partial results page-by-page so first load shows unread badges
+        // immediately instead of waiting for the full mailbox scan to finish.
+        $scope.folderUnreadCounts = unreadCounts;
+        $scope.messageFolderByID = trackedFolders;
+
         start += items.length;
         var total = parseInt(data && data.total, 10);
         if(isNaN(total) || total < start) {
           total = start;
         }
         if(items.length === 0 || start >= total) {
-          $scope.folderUnreadCounts = unreadCounts;
-          $scope.messageFolderByID = trackedFolders;
           return;
         }
         loadPage();
