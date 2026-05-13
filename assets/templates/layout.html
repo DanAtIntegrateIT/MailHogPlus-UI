@@ -98,6 +98,12 @@
                     Settings
                   </a>
                 </li>
+                <li ng-class="{ active: showLogs }">
+                  <a href="#" ng-click="openLogs(); $event.preventDefault();">
+                    <span class="glyphicon glyphicon-list-alt"></span>
+                    Logs
+                  </a>
+                </li>
                 <li>
                   <a href="#" ng-click="openAboutModal(); $event.preventDefault();">
                     <span class="glyphicon glyphicon-info-sign"></span>

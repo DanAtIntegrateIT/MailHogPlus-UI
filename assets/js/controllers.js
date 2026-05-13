@@ -142,6 +142,13 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.lastArrivalFolderKey = null;
   $scope.folders = [];
   $scope.showSettings = false;
+  $scope.showLogs = false;
+  $scope.logsLoading = false;
+  $scope.logsError = "";
+  $scope.logs = [];
+  $scope.logFilePath = "";
+  $scope.logQuery = "";
+  $scope.logLinesLimit = 250;
   $scope.settingsLoading = false;
   $scope.settingsSaving = false;
   $scope.settingsStatus = "";
@@ -903,7 +910,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   }
 
   $scope.handleKeyboardShortcuts = function(event) {
-    if($scope.showSettings) {
+    if($scope.showSettings || $scope.showLogs) {
       return;
     }
     if($('.modal.in:visible').length > 0) {
@@ -945,6 +952,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.selectInbox = function() {
     $scope.showSettings = false;
+    $scope.showLogs = false;
     $scope.preview = null;
     $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;
@@ -960,6 +968,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.selectFolder = function(folderName) {
     $scope.showSettings = false;
+    $scope.showLogs = false;
     $scope.preview = null;
     $scope.previewAllHeaders = false;
     $scope.selectedMessageID = null;
@@ -1566,8 +1575,53 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.selectedMessageID = null;
     $scope.searching = false;
     $scope.showSettings = true;
+    $scope.showLogs = false;
     $scope.buildConnectionSettings();
     $scope.fetchSettings();
+  }
+
+  $scope.openLogs = function() {
+    $scope.preview = null;
+    $scope.selectedMessageID = null;
+    $scope.searching = false;
+    $scope.showSettings = false;
+    $scope.showLogs = true;
+    $scope.refreshLogs();
+  }
+
+  $scope.refreshLogs = function() {
+    $scope.logsLoading = true;
+    $scope.logsError = "";
+
+    var limit = parseInt($scope.logLinesLimit, 10);
+    if(!limit || limit <= 0) {
+      limit = 250;
+    }
+    if(limit > 2000) {
+      limit = 2000;
+    }
+    $scope.logLinesLimit = limit;
+
+    var url = $scope.host + 'api/v2/logs?lines=' + encodeURIComponent(limit);
+    var query = ($scope.logQuery || "").trim();
+    if(query.length > 0) {
+      url += '&query=' + encodeURIComponent(query);
+    }
+
+    $http.get(url).success(function(data) {
+      $scope.logs = data.lines || [];
+      $scope.logFilePath = data.path || "";
+      $scope.logsLoading = false;
+    }).error(function(resp) {
+      $scope.logs = [];
+      $scope.logFilePath = "";
+      $scope.logsLoading = false;
+      if(resp && resp.error) {
+        $scope.logsError = resp.error;
+      } else {
+        $scope.logsError = "Unable to load logs.";
+      }
+    });
   }
 
   $scope.saveSettings = function() {
@@ -1623,6 +1677,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.backToInbox = function() {
     $scope.showSettings = false;
+    $scope.showLogs = false;
     $scope.searching = false;
     $scope.startIndex = 0;
     $scope.refresh();
@@ -1953,6 +2008,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.search = function(kind, text) {
     $scope.showSettings = false;
+    $scope.showLogs = false;
     $scope.startIndex = 0;
     $scope.searching = true;
     $scope.searchKind = kind;
@@ -2097,6 +2153,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     $scope.showSettings = false;
+    $scope.showLogs = false;
     $scope.selectedMessageID = message.ID;
     $scope.setMessageReadStateByID(message.ID, true);
     $scope.clearLastArrivalIndicatorForMessage(message);

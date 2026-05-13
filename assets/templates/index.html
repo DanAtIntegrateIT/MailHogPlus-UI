@@ -1,3 +1,46 @@
+<div class="logs-page" ng-if="showLogs">
+  <div class="logs-card">
+    <div class="logs-header">
+      <div>
+        <h3>Application logs</h3>
+        <p>Review SMTP/API events to diagnose why an email was not accepted.</p>
+      </div>
+      <div class="logs-actions">
+        <button type="button" class="btn btn-default" ng-click="refreshLogs()" ng-disabled="logsLoading">
+          <i class="glyphicon glyphicon-refresh"></i>
+          {{ logsLoading ? 'Loading...' : 'Refresh' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="logs-toolbar">
+      <div class="form-group">
+        <label for="logs-lines-limit">Lines</label>
+        <input id="logs-lines-limit" type="number" min="1" max="2000" class="form-control" ng-model="logLinesLimit">
+      </div>
+      <div class="form-group logs-query-group">
+        <label for="logs-query">Filter text</label>
+        <input id="logs-query" type="text" class="form-control" ng-model="logQuery" ng-key-enter="refreshLogs()" placeholder="e.g. Rejecting AUTH or Rejecting RCPT TO">
+      </div>
+      <div class="form-group logs-toolbar-button">
+        <button type="button" class="btn btn-default" ng-click="refreshLogs()" ng-disabled="logsLoading">Apply</button>
+      </div>
+    </div>
+
+    <div class="alert alert-danger" ng-if="logsError">{{ logsError }}</div>
+    <div class="logs-meta" ng-if="!logsError">
+      <strong>{{ logs.length }}</strong> line(s)
+      <span ng-if="logFilePath">from <code>{{ logFilePath }}</code></span>
+    </div>
+
+    <div class="logs-empty" ng-if="!logsLoading && !logsError && logs.length === 0">
+      No log entries found for this filter.
+    </div>
+
+    <pre class="logs-output" ng-if="logs.length > 0"><span ng-repeat="line in logs track by $index">{{ line }}&#10;</span></pre>
+  </div>
+</div>
+
 <div class="settings-page" ng-if="showSettings">
   <form class="settings-card settings-card-modern" role="form" ng-submit="saveSettings()">
     <div class="settings-header settings-header-modern">
@@ -249,7 +292,7 @@
   </form>
 </div>
 
-<div class="mail-workspace" id="mail-workspace" ng-if="!showSettings" ng-class="viewMode === 'columns' ? 'workspace-columns' : 'workspace-stacked'">
+<div class="mail-workspace" id="mail-workspace" ng-if="!showSettings && !showLogs" ng-class="viewMode === 'columns' ? 'workspace-columns' : 'workspace-stacked'">
   <div class="mail-list-pane" ng-style="viewMode === 'columns' ? { 'width': columnsListWidth + '%' } : { 'height': stackedListHeight + '%' }">
     <div class="toolbar" ng-if="!searching">
       <button class="btn btn-default" ng-click="refresh()" title="Refresh">
