@@ -1853,6 +1853,32 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     tabContent.find('.tab-pane').css('height', '');
   }
 
+  $scope.scrollSelectedMessageIntoView = function() {
+    var visibleList = $('.mail-list-pane .messages:visible');
+    if(visibleList.length === 0) {
+      return;
+    }
+    var container = visibleList[0];
+    var selected = visibleList.find('.msglist-message.selected');
+    if(selected.length === 0) {
+      return;
+    }
+
+    var selectedNode = selected[0];
+    var selectedTop = selectedNode.offsetTop;
+    var selectedBottom = selectedTop + selectedNode.offsetHeight;
+    var viewTop = container.scrollTop;
+    var viewBottom = viewTop + container.clientHeight;
+
+    if(selectedTop < viewTop) {
+      container.scrollTop = selectedTop;
+      return;
+    }
+    if(selectedBottom > viewBottom) {
+      container.scrollTop = selectedBottom - container.clientHeight;
+    }
+  }
+
   $scope.getHeaderValue = function(message, headerName) {
     if(!message || !message.Content || !message.Content.Headers || !headerName) {
       return "";
@@ -2253,6 +2279,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.rememberSelectedMessageForCurrentFolder(message.ID);
     $timeout(function(){
       $scope.resizePreview();
+      $scope.scrollSelectedMessageIntoView();
     }, 0);
 
     // Cancel any previous delayed preview loading state when changing selection.
