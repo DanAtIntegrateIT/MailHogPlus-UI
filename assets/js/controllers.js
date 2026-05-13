@@ -2249,6 +2249,17 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.preview = $scope.prepareMessageForPreview($scope.cache[message.ID]);
       $scope.loadEmailQuality($scope.preview);
     } else {
+      // v2 list responses already include full message payload for preview in
+      // normal flows, so use that immediately and avoid click-time refetch.
+      if(message.Content && message.Content.Headers) {
+        $scope.cache[message.ID] = message;
+        $scope.previewLoading = false;
+        $scope.preview = $scope.prepareMessageForPreview(message);
+        $scope.loadEmailQuality($scope.preview);
+        return;
+      }
+
+      // Fallback for partial payloads only.
       $scope.previewLoading = false;
       var requestedMessageID = message.ID;
       var e = $scope.startEvent("Loading message", message.ID, "glyphicon-download-alt");
