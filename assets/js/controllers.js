@@ -153,6 +153,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.tagFilterInput = "";
   $scope.folderPendingDelete = "";
   $scope.folderPendingDeleteIsInbox = false;
+  $scope.folderPendingDeleteIncludeFavorites = false;
   $scope.lastArrivalFolderKey = null;
   $scope.folders = [];
   $scope.folderUnreadCounts = {};
@@ -2712,11 +2713,19 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.clearPendingFolderDelete = function() {
     $scope.folderPendingDelete = "";
     $scope.folderPendingDeleteIsInbox = false;
+    $scope.folderPendingDeleteIncludeFavorites = false;
   }
 
-  $scope.performFolderDelete = function(folderName, allowInbox) {
+  $('#confirm-delete-folder').on('show.bs.modal', function() {
+    $scope.$applyAsync(function() {
+      $scope.folderPendingDeleteIncludeFavorites = false;
+    });
+  });
+
+  $scope.performFolderDelete = function(folderName, allowInbox, includeFavorites) {
     var targetFolder = (folderName || "").trim();
     var isInboxTarget = !!allowInbox || $scope.normalizeFolderName(targetFolder).length === 0;
+    var shouldDeleteFavorites = !!includeFavorites;
     if(!isInboxTarget && targetFolder.length === 0) {
       return;
     }
@@ -2724,27 +2733,58 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     var eventLabel = isInboxTarget ? "Inbox" : targetFolder;
     var eventName = isInboxTarget ? "Deleting inbox messages" : "Deleting folder messages";
     var e = $scope.startEvent(eventName, eventLabel, "glyphicon-trash");
-    var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(targetFolder);
-    $http.delete(url).success(function() {
+    var idsToDelete = [];
+    var fetchStart = 0;
+    var fetchLimit = 250;
+
+    var fetchMessagesToDelete = function() {
+      var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(targetFolder) + '&start=' + fetchStart + '&limit=' + fetchLimit + '&order=desc';
+      $http.get(url).success(function(data) {
+        var items = (data && data.items) ? data.items : [];
+        for(var i = 0; i < items.length; i++) {
+          if(items[i] && items[i].ID && (shouldDeleteFavorites || !$scope.isMessageFavorite(items[i]))) {
+            idsToDelete.push(items[i].ID);
+          }
+        }
+
+        fetchStart += items.length;
+        var total = parseInt(data && data.total, 10);
+        if(isNaN(total) || total < fetchStart) {
+          total = fetchStart;
+        }
+        if(items.length === 0 || fetchStart >= total) {
+          deleteMessages();
+          return;
+        }
+        fetchMessagesToDelete();
+      }).error(function(err) {
+        e.fail();
+        e.error = err;
+      });
+    };
+
+    var finalizeDelete = function(deletedIDs) {
       var normalizedTargetFolder = $scope.normalizeFolderName(targetFolder);
       if(!isInboxTarget && $scope.lastArrivalFolderKey === $scope.normalizeFolderName(targetFolder)) {
         $scope.lastArrivalFolderKey = null;
       }
+      for(var deletedIndex = 0; deletedIndex < deletedIDs.length; deletedIndex++) {
+        var deletedID = deletedIDs[deletedIndex];
+        if(normalizedTargetFolder.length > 0 && $scope.messageFolderByID[deletedID] === normalizedTargetFolder) {
+          delete $scope.messageFolderByID[deletedID];
+        }
+        $scope.forgetRememberedMessageID(deletedID);
+        delete $scope.favoriteStateByMessageID[deletedID];
+        delete $scope.readStateByMessageID[deletedID];
+        delete $scope.attachmentCacheByMessageID[deletedID];
+        delete $scope.qualityCacheByMessageID[deletedID];
+      }
+      $scope.persistFavoriteState();
+      $scope.persistReadState();
       if(normalizedTargetFolder.length > 0) {
         delete $scope.folderUnreadCounts[normalizedTargetFolder];
-        for(var trackedID in $scope.messageFolderByID) {
-          if($scope.messageFolderByID[trackedID] === normalizedTargetFolder) {
-            delete $scope.messageFolderByID[trackedID];
-            delete $scope.readStateByMessageID[trackedID];
-          }
-        }
-        $scope.persistReadState();
       }
       delete $scope.lastSelectedMessageByFolder[$scope.getFolderSelectionKey(targetFolder)];
-      if($scope.normalizeFolderName($scope.selectedFolder) === $scope.normalizeFolderName(targetFolder)) {
-        $scope.selectedFolder = "";
-        $scope.setSavedFolderPreference("");
-      }
       $scope.preview = null;
       $scope.selectedMessageID = null;
       $scope.startIndex = 0;
@@ -2752,10 +2792,37 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.searching = false;
       $scope.refresh();
       e.done();
-    }).error(function(err) {
-      e.fail();
-      e.error = err;
-    });
+    };
+
+    var deleteMessages = function() {
+      if(idsToDelete.length === 0) {
+        finalizeDelete([]);
+        return;
+      }
+
+      var deletedIDs = [];
+      var deleteAt = 0;
+      var deleteNext = function() {
+        if(deleteAt >= idsToDelete.length) {
+          finalizeDelete(deletedIDs);
+          return;
+        }
+
+        var id = idsToDelete[deleteAt];
+        $http.delete($scope.host + 'api/v1/messages/' + id).success(function() {
+          deletedIDs.push(id);
+          deleteAt++;
+          deleteNext();
+        }).error(function(err) {
+          e.fail();
+          e.error = err;
+        });
+      };
+
+      deleteNext();
+    };
+
+    fetchMessagesToDelete();
   }
 
   $scope.deleteFolder = function(folderName, $event) {
@@ -2768,6 +2835,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
     $scope.folderPendingDelete = folderName;
     $scope.folderPendingDeleteIsInbox = false;
+    $scope.folderPendingDeleteIncludeFavorites = false;
     $('#confirm-delete-folder').modal('show');
   }
 
@@ -2778,6 +2846,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
     $scope.folderPendingDelete = "";
     $scope.folderPendingDeleteIsInbox = true;
+    $scope.folderPendingDeleteIncludeFavorites = false;
     $('#confirm-delete-folder').modal('show');
   }
 
@@ -2785,8 +2854,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $('#confirm-delete-folder').modal('hide');
     var folderName = $scope.folderPendingDelete;
     var deleteInboxMessages = $scope.folderPendingDeleteIsInbox;
+    var includeFavorites = $scope.folderPendingDeleteIncludeFavorites;
     $scope.clearPendingFolderDelete();
-    $scope.performFolderDelete(folderName, deleteInboxMessages);
+    $scope.performFolderDelete(folderName, deleteInboxMessages, includeFavorites);
   }
 
   $scope.onReleaseServerChanged = function() {

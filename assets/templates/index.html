@@ -751,6 +751,12 @@
       <div class="modal-body">
         <p ng-if="folderPendingDeleteIsInbox">Are you sure you want to delete all messages in <strong>Inbox</strong> (messages without a folder)?</p>
         <p ng-if="!folderPendingDeleteIsInbox">Are you sure you want to delete all messages in folder <strong>{{ folderPendingDelete }}</strong>?</p>
+        <div class="checkbox">
+          <label>
+            <input type="checkbox" ng-model="folderPendingDeleteIncludeFavorites">
+            Also delete favourites?
+          </label>
+        </div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="clearPendingFolderDelete()">Cancel</button>
