@@ -512,10 +512,27 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
 
   $scope.refreshFolderUnreadCounts = function() {
     var requestToken = ++$scope.folderUnreadCountsRequestToken;
-    var start = 0;
     var limit = 250;
     var unreadCounts = {};
     var trackedFolders = {};
+    var folderNames = [];
+    var seenFolders = {};
+
+    for(var folderIndex = 0; folderIndex < $scope.folders.length; folderIndex++) {
+      var folderName = ($scope.folders[folderIndex].name || "").trim();
+      var normalizedFolderName = $scope.normalizeFolderName(folderName);
+      if(normalizedFolderName.length === 0 || seenFolders[normalizedFolderName]) {
+        continue;
+      }
+      seenFolders[normalizedFolderName] = true;
+      folderNames.push(folderName);
+    }
+
+    if(folderNames.length === 0) {
+      $scope.folderUnreadCounts = {};
+      $scope.messageFolderByID = {};
+      return;
+    }
 
     var applyMessage = function(message) {
       if(!message || !message.ID) {
@@ -531,37 +548,50 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       unreadCounts[normalizedFolderName] = (unreadCounts[normalizedFolderName] || 0) + 1;
     };
 
-    var loadPage = function() {
-      var url = $scope.host + 'api/v2/messages?start=' + start + '&limit=' + limit + '&order=desc';
-      $http.get(url).success(function(data) {
-        if(requestToken !== $scope.folderUnreadCountsRequestToken) {
-          return;
-        }
-        var items = (data && data.items) ? data.items : [];
-        for(var i = 0; i < items.length; i++) {
-          applyMessage(items[i]);
-        }
+    var loadFolder = function(folderPosition) {
+      if(folderPosition >= folderNames.length) {
+        return;
+      }
 
-        // Apply partial results page-by-page so first load shows unread badges
-        // immediately instead of waiting for the full mailbox scan to finish.
-        $scope.folderUnreadCounts = unreadCounts;
-        $scope.messageFolderByID = trackedFolders;
+      var folderName = folderNames[folderPosition];
+      var start = 0;
 
-        start += items.length;
-        var total = parseInt(data && data.total, 10);
-        if(isNaN(total) || total < start) {
-          total = start;
-        }
-        if(items.length === 0 || start >= total) {
-          return;
-        }
-        loadPage();
-      }).error(function() {
-        // Keep current unread counters on failure.
-      });
+      var loadPage = function() {
+        var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(folderName) + '&start=' + start + '&limit=' + limit + '&order=desc';
+        $http.get(url).success(function(data) {
+          if(requestToken !== $scope.folderUnreadCountsRequestToken) {
+            return;
+          }
+          var items = (data && data.items) ? data.items : [];
+          for(var i = 0; i < items.length; i++) {
+            applyMessage(items[i]);
+          }
+
+          // Apply partial results page-by-page so first load shows unread badges
+          // immediately instead of waiting for the full mailbox scan to finish.
+          $scope.folderUnreadCounts = unreadCounts;
+          $scope.messageFolderByID = trackedFolders;
+
+          start += items.length;
+          var total = parseInt(data && data.total, 10);
+          if(isNaN(total) || total < start) {
+            total = start;
+          }
+          if(items.length === 0 || start >= total) {
+            loadFolder(folderPosition + 1);
+            return;
+          }
+          loadPage();
+        }).error(function() {
+          // Keep current unread counters on failure and continue scanning.
+          loadFolder(folderPosition + 1);
+        });
+      };
+
+      loadPage();
     };
 
-    loadPage();
+    loadFolder(0);
   }
 
   $scope.markLastArrivalFolder = function(folderName) {
