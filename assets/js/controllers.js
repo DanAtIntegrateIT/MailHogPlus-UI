@@ -498,6 +498,13 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     return $scope.folderUnreadCounts[normalizedFolderName] || 0;
   }
 
+  $scope.folderHasAnyMessages = function(folder) {
+    if(!folder) {
+      return false;
+    }
+    return (parseInt(folder.count, 10) || 0) > 0;
+  }
+
   $scope.addToFolderUnreadCount = function(folderName, delta) {
     var normalizedFolderName = $scope.normalizeFolderName(folderName);
     if(normalizedFolderName.length === 0 || !delta) {

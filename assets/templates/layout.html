@@ -69,7 +69,9 @@
                 </li>
                 <li class="folder-link" ng-repeat="folder in folders track by folder.name" ng-class="{ active: selectedFolder === folder.name }">
                   <a href="#" ng-click="selectFolder(folder.name); $event.preventDefault();">
-                    <span class="glyphicon glyphicon-folder-open folder-icon" ng-class="{ 'folder-icon-default': isDefaultFolder(folder.name) }" title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
+                    <span class="glyphicon folder-icon"
+                          ng-class="{ 'glyphicon-folder-open': folderHasAnyMessages(folder), 'glyphicon-folder-close': !folderHasAnyMessages(folder), 'folder-icon-default': isDefaultFolder(folder.name) }"
+                          title="{{ isDefaultFolder(folder.name) ? 'Default folder' : '' }}"></span>
                     <span class="folder-last-arrival-indicator"
                           ng-if="isLastArrivalFolder(folder.name)"
                           title="Most recent email arrived here"></span>
