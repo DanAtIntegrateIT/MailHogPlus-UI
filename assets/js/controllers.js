@@ -144,6 +144,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.folderPendingDeleteIsInbox = false;
   $scope.lastArrivalFolderKey = null;
   $scope.folders = [];
+  $scope.folderUnreadCounts = {};
+  $scope.messageFolderByID = {};
+  $scope.folderUnreadCountsRequestToken = 0;
   $scope.showSettings = false;
   $scope.showLogs = false;
   $scope.mailboxLoading = false;
@@ -462,6 +465,91 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.sortFolders();
   }
 
+  $scope.getFolderUnreadCount = function(folderName) {
+    var normalizedFolderName = $scope.normalizeFolderName(folderName);
+    if(normalizedFolderName.length === 0) {
+      return 0;
+    }
+    return $scope.folderUnreadCounts[normalizedFolderName] || 0;
+  }
+
+  $scope.addToFolderUnreadCount = function(folderName, delta) {
+    var normalizedFolderName = $scope.normalizeFolderName(folderName);
+    if(normalizedFolderName.length === 0 || !delta) {
+      return;
+    }
+    var current = $scope.folderUnreadCounts[normalizedFolderName] || 0;
+    var next = current + delta;
+    if(next <= 0) {
+      delete $scope.folderUnreadCounts[normalizedFolderName];
+      return;
+    }
+    $scope.folderUnreadCounts[normalizedFolderName] = next;
+  }
+
+  $scope.trackMessageFolder = function(message) {
+    if(!message || !message.ID) {
+      return;
+    }
+    var normalizedFolderName = $scope.normalizeFolderName($scope.getFolderFromMessage(message));
+    if(normalizedFolderName.length === 0) {
+      delete $scope.messageFolderByID[message.ID];
+      return;
+    }
+    $scope.messageFolderByID[message.ID] = normalizedFolderName;
+  }
+
+  $scope.refreshFolderUnreadCounts = function() {
+    var requestToken = ++$scope.folderUnreadCountsRequestToken;
+    var start = 0;
+    var limit = 250;
+    var unreadCounts = {};
+    var trackedFolders = {};
+
+    var applyMessage = function(message) {
+      if(!message || !message.ID) {
+        return;
+      }
+      var normalizedFolderName = $scope.normalizeFolderName($scope.getFolderFromMessage(message));
+      if(normalizedFolderName.length > 0) {
+        trackedFolders[message.ID] = normalizedFolderName;
+      }
+      if(normalizedFolderName.length === 0 || $scope.isMessageRead(message)) {
+        return;
+      }
+      unreadCounts[normalizedFolderName] = (unreadCounts[normalizedFolderName] || 0) + 1;
+    };
+
+    var loadPage = function() {
+      var url = $scope.host + 'api/v2/messages?start=' + start + '&limit=' + limit + '&order=desc';
+      $http.get(url).success(function(data) {
+        if(requestToken !== $scope.folderUnreadCountsRequestToken) {
+          return;
+        }
+        var items = (data && data.items) ? data.items : [];
+        for(var i = 0; i < items.length; i++) {
+          applyMessage(items[i]);
+        }
+
+        start += items.length;
+        var total = parseInt(data && data.total, 10);
+        if(isNaN(total) || total < start) {
+          total = start;
+        }
+        if(items.length === 0 || start >= total) {
+          $scope.folderUnreadCounts = unreadCounts;
+          $scope.messageFolderByID = trackedFolders;
+          return;
+        }
+        loadPage();
+      }).error(function() {
+        // Keep current unread counters on failure.
+      });
+    };
+
+    loadPage();
+  }
+
   $scope.markLastArrivalFolder = function(folderName) {
     $scope.lastArrivalFolderKey = $scope.normalizeFolderName(folderName);
   }
@@ -499,6 +587,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $http.get($scope.host + 'api/v2/folders').success(function(data) {
       $scope.folders = data.items || [];
       $scope.sortFolders();
+      $scope.refreshFolderUnreadCounts();
       if($scope.pendingSavedFolderSelection !== null) {
         var desiredFolder = ($scope.pendingSavedFolderSelection || "").trim();
         $scope.pendingSavedFolderSelection = null;
@@ -845,14 +934,27 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.syncSelectionWithVisibleMessages();
   }
 
-  $scope.setMessageReadStateByID = function(messageID, isRead) {
+  $scope.setMessageReadStateByID = function(messageID, isRead, message) {
     if(!messageID) {
       return;
     }
+    var wasRead = !!$scope.readStateByMessageID[messageID];
+    var willBeRead = !!isRead;
     if(isRead) {
       $scope.readStateByMessageID[messageID] = true;
     } else {
       delete $scope.readStateByMessageID[messageID];
+    }
+    var normalizedFolderName = "";
+    if(message) {
+      normalizedFolderName = $scope.normalizeFolderName($scope.getFolderFromMessage(message));
+      $scope.trackMessageFolder(message);
+    }
+    if(normalizedFolderName.length === 0 && $scope.messageFolderByID[messageID]) {
+      normalizedFolderName = $scope.messageFolderByID[messageID];
+    }
+    if(normalizedFolderName.length > 0 && wasRead !== willBeRead) {
+      $scope.addToFolderUnreadCount(normalizedFolderName, willBeRead ? -1 : 1);
     }
     $scope.persistReadState();
   }
@@ -873,7 +975,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       return;
     }
     var willBeRead = !$scope.isMessageRead(message);
-    $scope.setMessageReadStateByID(message.ID, willBeRead);
+    $scope.setMessageReadStateByID(message.ID, willBeRead, message);
     if(willBeRead) {
       $scope.clearLastArrivalIndicatorForMessage(message);
     }
@@ -1768,6 +1870,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         var messageFolder = $scope.getFolderFromMessage(message);
         $scope.markLastArrivalFolder(messageFolder);
         $scope.bumpFolderCount(messageFolder);
+        $scope.trackMessageFolder(message);
+        if(!$scope.isMessageRead(message)) {
+          $scope.addToFolderUnreadCount(messageFolder, 1);
+        }
         if(typeof(Notification) !== "undefined") {
           $scope.createNotification(message);
         }
@@ -2008,6 +2114,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     url += "&order=" + encodeURIComponent($scope.sortOrder);
     $http.get(url).success(function(data) {
       $scope.messages = data.items || [];
+      for(var messageIndex = 0; messageIndex < $scope.messages.length; messageIndex++) {
+        $scope.trackMessageFolder($scope.messages[messageIndex]);
+      }
       $scope.totalMessages = data.total;
       $scope.countMessages = data.count;
       $scope.startMessages = data.start;
@@ -2136,6 +2245,9 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
     $http.get(url).success(function(data) {
       $scope.searchMessages = data.items;
+      for(var searchMessageIndex = 0; searchMessageIndex < $scope.searchMessages.length; searchMessageIndex++) {
+        $scope.trackMessageFolder($scope.searchMessages[searchMessageIndex]);
+      }
       $scope.totalSearchMessages = data.total;
       $scope.countSearchMessages = data.count;
       $scope.startSearchMessages = data.start;
@@ -2274,7 +2386,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     $scope.showSettings = false;
     $scope.showLogs = false;
     $scope.selectedMessageID = message.ID;
-    $scope.setMessageReadStateByID(message.ID, true);
+    $scope.setMessageReadStateByID(message.ID, true, message);
     $scope.clearLastArrivalIndicatorForMessage(message);
     $scope.rememberSelectedMessageForCurrentFolder(message.ID);
     $timeout(function(){
@@ -2513,8 +2625,19 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     var e = $scope.startEvent(eventName, eventLabel, "glyphicon-trash");
     var url = $scope.host + 'api/v2/messages?folder=' + encodeURIComponent(targetFolder);
     $http.delete(url).success(function() {
+      var normalizedTargetFolder = $scope.normalizeFolderName(targetFolder);
       if(!isInboxTarget && $scope.lastArrivalFolderKey === $scope.normalizeFolderName(targetFolder)) {
         $scope.lastArrivalFolderKey = null;
+      }
+      if(normalizedTargetFolder.length > 0) {
+        delete $scope.folderUnreadCounts[normalizedTargetFolder];
+        for(var trackedID in $scope.messageFolderByID) {
+          if($scope.messageFolderByID[trackedID] === normalizedTargetFolder) {
+            delete $scope.messageFolderByID[trackedID];
+            delete $scope.readStateByMessageID[trackedID];
+          }
+        }
+        $scope.persistReadState();
       }
       delete $scope.lastSelectedMessageByFolder[$scope.getFolderSelectionKey(targetFolder)];
       if($scope.normalizeFolderName($scope.selectedFolder) === $scope.normalizeFolderName(targetFolder)) {
@@ -2638,6 +2761,8 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       $scope.lastArrivalFolderKey = null;
       $scope.lastSelectedMessageByFolder = {};
       $scope.restoreMessageIDOnNextRefresh = null;
+      $scope.folderUnreadCounts = {};
+      $scope.messageFolderByID = {};
       $scope.favoriteStateByMessageID = {};
       $scope.readStateByMessageID = {};
       $scope.attachmentCacheByMessageID = {};
@@ -2654,6 +2779,14 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.deleteOne = function(message) {
     var e = $scope.startEvent("Deleting message", message.ID, "glyphicon-remove");
   	$http.delete($scope.host + 'api/v1/messages/' + message.ID).success(function() {
+      var normalizedFolderName = $scope.normalizeFolderName($scope.getFolderFromMessage(message));
+      if(normalizedFolderName.length === 0 && $scope.messageFolderByID[message.ID]) {
+        normalizedFolderName = $scope.messageFolderByID[message.ID];
+      }
+      if(normalizedFolderName.length > 0 && !$scope.readStateByMessageID[message.ID]) {
+        $scope.addToFolderUnreadCount(normalizedFolderName, -1);
+      }
+      delete $scope.messageFolderByID[message.ID];
       $scope.forgetRememberedMessageID(message.ID);
       delete $scope.favoriteStateByMessageID[message.ID];
       delete $scope.readStateByMessageID[message.ID];

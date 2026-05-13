@@ -77,7 +77,7 @@
                     <button type="button" class="btn btn-link btn-xs pull-right folder-delete" ng-click="deleteFolder(folder.name, $event)" title="Delete folder messages">
                       <span class="glyphicon glyphicon-trash"></span>
                     </button>
-                    <span class="badge pull-right" ng-if="folder.count > 0">{{folder.count}}</span>
+                    <span class="badge pull-right" ng-if="getFolderUnreadCount(folder.name) > 0">{{ getFolderUnreadCount(folder.name) }}</span>
                   </a>
                 </li>
               </ul>
