@@ -165,6 +165,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.listPaneLoading = false;
   $scope.previewLoading = false;
   $scope.logsLoading = false;
+  $scope.logsClearing = false;
   $scope.logsError = "";
   $scope.logs = [];
   $scope.logFilePath = "";
@@ -1886,6 +1887,31 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
         $scope.logsError = resp.error;
       } else {
         $scope.logsError = "Unable to load logs.";
+      }
+    });
+  }
+
+  $scope.clearLogs = function() {
+    if($scope.logsClearing || $scope.logsLoading) {
+      return;
+    }
+    if(!window.confirm("Clear the application log file? This cannot be undone.")) {
+      return;
+    }
+
+    $scope.logsClearing = true;
+    $scope.logsError = "";
+    $http.delete($scope.host + 'api/v2/logs').success(function(data) {
+      $scope.logs = [];
+      $scope.logFilePath = data.path || "";
+      $scope.logsClearing = false;
+      $scope.refreshLogs();
+    }).error(function(resp) {
+      $scope.logsClearing = false;
+      if(resp && resp.error) {
+        $scope.logsError = resp.error;
+      } else {
+        $scope.logsError = "Unable to clear logs.";
       }
     });
   }

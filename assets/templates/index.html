@@ -10,6 +10,10 @@
           <i class="glyphicon glyphicon-refresh"></i>
           {{ logsLoading ? 'Loading...' : 'Refresh' }}
         </button>
+        <button type="button" class="btn btn-danger" ng-click="clearLogs()" ng-disabled="logsLoading || logsClearing">
+          <i class="glyphicon glyphicon-trash"></i>
+          {{ logsClearing ? 'Clearing...' : 'Clear log' }}
+        </button>
       </div>
     </div>
 
