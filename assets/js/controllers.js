@@ -34,7 +34,7 @@ mailhogApp.directive('ngKeyEnter', function () {
   };
 });
 
-mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $document) {
+mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $document, $interval) {
   $scope.host = apiHost;
 
   $scope.cache = {};
@@ -166,11 +166,13 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $scope.previewLoading = false;
   $scope.logsLoading = false;
   $scope.logsClearing = false;
+  $scope.logsAutoRefreshEnabled = true;
   $scope.logsError = "";
   $scope.logs = [];
   $scope.logFilePath = "";
   $scope.logQuery = "";
   $scope.logLinesLimit = 250;
+  var logsAutoRefreshTimer = null;
   $scope.settingsLoading = false;
   $scope.settingsSaving = false;
   $scope.settingsStatus = "";
@@ -1201,6 +1203,10 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
   $document.on("keydown", $scope.handleKeyboardShortcuts);
   $scope.$on("$destroy", function() {
     $document.off("keydown", $scope.handleKeyboardShortcuts);
+    if(logsAutoRefreshTimer) {
+      $interval.cancel(logsAutoRefreshTimer);
+      logsAutoRefreshTimer = null;
+    }
     if($scope.previewLoadingTimerPromise) {
       $timeout.cancel($scope.previewLoadingTimerPromise);
       $scope.previewLoadingTimerPromise = null;
@@ -1891,14 +1897,18 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     });
   }
 
-  $scope.clearLogs = function() {
+  $scope.requestClearLogs = function() {
     if($scope.logsClearing || $scope.logsLoading) {
       return;
     }
-    if(!window.confirm("Clear the application log file? This cannot be undone.")) {
+    $('#confirm-clear-logs').modal('show');
+  }
+
+  $scope.confirmClearLogs = function() {
+    if($scope.logsClearing || $scope.logsLoading) {
       return;
     }
-
+    $('#confirm-clear-logs').modal('hide');
     $scope.logsClearing = true;
     $scope.logsError = "";
     $http.delete($scope.host + 'api/v2/logs').success(function(data) {
@@ -1915,6 +1925,19 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
       }
     });
   }
+
+  $scope.onLogsAutoRefreshChanged = function() {
+    if($scope.showLogs && $scope.logsAutoRefreshEnabled && !$scope.logsLoading && !$scope.logsClearing) {
+      $scope.refreshLogs();
+    }
+  }
+
+  logsAutoRefreshTimer = $interval(function() {
+    if(!$scope.showLogs || !$scope.logsAutoRefreshEnabled || $scope.logsLoading || $scope.logsClearing) {
+      return;
+    }
+    $scope.refreshLogs();
+  }, 5000);
 
   $scope.saveSettings = function() {
     var retentionDays = parseInt($scope.settingsForm.retentionDays, 10);
