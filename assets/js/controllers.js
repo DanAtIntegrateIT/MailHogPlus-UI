@@ -2703,7 +2703,7 @@ mailhogApp.controller('MailCtrl', function ($scope, $http, $sce, $timeout, $docu
     }
   };
   $scope.date = function(timestamp) {
-  	return (new Date(timestamp)).toString();
+  	return moment(timestamp).format("ddd MMM D YYYY HH:mm:ss");
   };
 
   $scope.deleteAll = function() {

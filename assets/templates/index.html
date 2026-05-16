@@ -453,7 +453,7 @@
         </div>
 
         <div class="message-meta">
-          <div class="message-time">{{ getMoment(date(message.Created)).fromNow() }}</div>
+          <div class="message-time" title="{{ date(message.Created) }}">{{ getMoment(date(message.Created)).fromNow() }}</div>
           <div class="message-size" ng-if="message.Raw && message.Raw.Data">
             {{ fileSize(message.Raw.Data.length) }}
           </div>
@@ -501,7 +501,7 @@
         </div>
 
         <div class="message-meta">
-          <div class="message-time">{{ getMoment(date(message.Created)).fromNow() }}</div>
+          <div class="message-time" title="{{ date(message.Created) }}">{{ getMoment(date(message.Created)).fromNow() }}</div>
           <div class="message-size" ng-if="message.Raw && message.Raw.Data">
             {{ fileSize(message.Raw.Data.length) }}
           </div>
@@ -585,6 +585,10 @@
                 <td>
                   {{ tryDecodeMime((preview.Content.Headers["To"] || []).join(', ') || preview.To[0].Mailbox + "@" + preview.To[0].Domain) }}
                 </td>
+              </tr>
+              <tr>
+                <th>Date</th>
+                <td>{{ date(preview.Created) }}</td>
               </tr>
               <tr ng-if="getTagsFromMessage(preview).length > 0">
                 <th>Tags</th>
