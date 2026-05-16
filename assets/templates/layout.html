@@ -12,8 +12,13 @@
     <link rel="stylesheet" href="css/jquery-ui-1.10.4-smoothness.css">
     <link rel="stylesheet" href="css/bootstrap-3.3.2.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+      [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+        display: none !important;
+      }
+    </style>
   </head>
-  <body ng-controller="MailCtrl" ng-click="keepopen=false">
+  <body ng-controller="MailCtrl" ng-click="keepopen=false" ng-cloak>
     <nav class="navbar navbar-default navbar-static-top" role="navigation">
       <div class="container-fluid">
         <div class="col-md-2 col-sm-3">
